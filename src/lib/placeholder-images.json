@@ -1,0 +1,40 @@
+{
+  "placeholderImages": [
+    {
+      "id": "property-1",
+      "description": "Modern apartment exterior",
+      "imageUrl": "https://images.unsplash.com/photo-1664372623516-0b1540d6771e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxtb2Rlcm4lMjBhcGFydG1lbnR8ZW58MHx8fHwxNzU4NjkzOTY3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "modern apartment"
+    },
+    {
+      "id": "property-2",
+      "description": "Suburban house with a garden",
+      "imageUrl": "https://images.unsplash.com/photo-1572120360610-d971b9d7767c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxzdWJ1cmJhbiUyMGhvdXNlfGVufDB8fHx8MTc1ODY5MzI2OXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "suburban house"
+    },
+    {
+      "id": "property-3",
+      "description": "Downtown condo with city view",
+      "imageUrl": "https://images.unsplash.com/photo-1664190052947-c436bf0d9719?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxjaXR5JTIwY29uZG98ZW58MHx8fHwxNzU4NzEzNTE3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "city condo"
+    },
+    {
+      "id": "property-4",
+      "description": "Cozy studio apartment",
+      "imageUrl": "https://images.unsplash.com/photo-1702014859908-d48b9b844240?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxzdHVkaW8lMjBhcGFydG1lbnR8ZW58MHx8fHwxNzU4NzI0Mzk2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "studio apartment"
+    },
+    {
+      "id": "property-5",
+      "description": "Spacious family home",
+      "imageUrl": "https://images.unsplash.com/photo-1601758003122-53c40e686a19?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxmYW1pbHklMjBob21lfGVufDB8fHx8MTc1ODc3ODM1OHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "family home"
+    },
+    {
+      "id": "property-6",
+      "description": "Luxury penthouse apartment",
+      "imageUrl": "https://images.unsplash.com/photo-1565623833408-d77e39b88af6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxsdXh1cnklMjBwZW50aG91c2V8ZW58MHx8fHwxNzU4NzQzNDMzfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "luxury penthouse"
+    }
+  ]
+}
