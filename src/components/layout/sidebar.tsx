@@ -19,16 +19,18 @@ import {
   Settings,
   UserCog,
   List,
+  Bot,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSidebar } from '@/hooks/use-sidebar';
 import { cn } from '@/lib/utils';
-import { useCurrentUser, UserRole } from '@/hooks/use-current-user';
+import { useCurrentUser } from '@/hooks/use-current-user';
+import { useTranslation } from '@/hooks/use-translation';
 
 
 const allNavItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'worker', 'tenant'] },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'worker', 'tenant'] },
   { href: '/properties', label: 'Properties', icon: Building2, roles: ['admin', 'worker'] },
   { href: '/properties/management', label: 'Property Management', icon: List, roles: ['admin'] },
   { href: '/tenants', label: 'Tenants', icon: Users, roles: ['admin'] },
@@ -37,14 +39,16 @@ const allNavItems = [
   { href: '/rent', label: 'Rent Collection', icon: DollarSign, roles: ['admin'] },
   { href: '/documents', label: 'Documents', icon: FileText, roles: ['admin', 'worker'] },
   { href: '/ai-generator', label: 'AI Generator', icon: Sparkles, roles: ['admin'] },
+  { href: '/ai-chatbot', label: 'AI Assistant', icon: Bot, roles: ['tenant'] },
 ];
 
-const useIsActive = (href: string) => {
-  const pathname = usePathname();
-  if (href === '/') {
-    return pathname === '/';
+const isActive = (pathname: string, href: string) => {
+  const lang = pathname.split('/')[1] || 'en';
+  const basePath = `/${lang}${href}`;
+  if (basePath === `/${lang}/dashboard`) {
+    return pathname === basePath;
   }
-  return pathname.startsWith(href);
+  return pathname.startsWith(basePath);
 };
 
 const MiniLogo = () => (
@@ -83,17 +87,31 @@ const MiniLogo = () => (
 
 
 export default function AppSidebar() {
+  const { dict } = useTranslation();
   const { isCollapsed } = useSidebar();
-  const settingsActive = useIsActive('/settings');
+  const pathname = usePathname();
+  const settingsActive = isActive(pathname, '/settings/roles');
   const { user } = useCurrentUser();
+  const lang = pathname.split('/')[1] || 'en';
+  
+  if (!user) {
+    return null;
+  }
   
   const navItems = allNavItems.filter(item => item.roles.includes(user.role));
+  
+  const getNavItemLabel = (label: string): string => {
+    const key = label.toLowerCase().replace(/ & /g, '').replace(/ /g, '');
+    // @ts-ignore
+    return dict.nav[key] || label;
+  }
+
 
   return (
     <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
       <nav className="flex flex-col items-center gap-4 px-2 sm:py-4">
         <Link
-          href="#"
+          href={`/${lang}/dashboard`}
           className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
         >
           <Building className="h-4 w-4 transition-all group-hover:scale-110" />
@@ -104,17 +122,17 @@ export default function AppSidebar() {
             <Tooltip key={item.href}>
               <TooltipTrigger asChild>
                 <Link
-                  href={item.href}
+                  href={`/${lang}${item.href}`}
                   className={cn(
                     'flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8',
-                    useIsActive(item.href) && 'bg-accent text-accent-foreground'
+                    isActive(pathname, item.href) && 'bg-accent text-accent-foreground'
                   )}
                 >
                   <item.icon className="h-5 w-5" />
-                  <span className="sr-only">{item.label}</span>
+                  <span className="sr-only">{getNavItemLabel(item.label)}</span>
                 </Link>
               </TooltipTrigger>
-              <TooltipContent side="right">{item.label}</TooltipContent>
+              <TooltipContent side="right">{getNavItemLabel(item.label)}</TooltipContent>
             </Tooltip>
           ))}
         </TooltipProvider>
@@ -124,17 +142,17 @@ export default function AppSidebar() {
           <Tooltip>
             <TooltipTrigger asChild>
               <Link
-                href="/settings/roles"
+                href={`/${lang}/settings/roles`}
                 className={cn(
                   'flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8',
                   settingsActive && 'bg-accent text-accent-foreground'
                 )}
               >
                 <Settings className="h-5 w-5" />
-                <span className="sr-only">Settings</span>
+                <span className="sr-only">{getNavItemLabel('Settings')}</span>
               </Link>
             </TooltipTrigger>
-            <TooltipContent side="right">Settings</TooltipContent>
+            <TooltipContent side="right">{getNavItemLabel('Settings')}</TooltipContent>
           </Tooltip>
            <Tooltip>
             <TooltipTrigger asChild>
@@ -144,10 +162,10 @@ export default function AppSidebar() {
                 )}
               >
                 <MiniLogo />
-                <span className="sr-only">MiNi Property</span>
+                <span className="sr-only">TenantLink</span>
               </div>
             </TooltipTrigger>
-            <TooltipContent side="right">Powered by MiNi Property</TooltipContent>
+            <TooltipContent side="right">Powered by TenantLink</TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </nav>

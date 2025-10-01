@@ -1,5 +1,8 @@
 
+
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { tenants } from '@/lib/data';
 
 export type UserRole = 'admin' | 'worker' | 'tenant';
 
@@ -24,25 +27,56 @@ export const workerUser: User = {
   id: 'user-worker-1',
   name: 'Bob the Builder',
   role: 'worker',
-  email: 'bob@example.com',
+  email: 'worker@example.com',
   assignedPropertyIds: ['prop-1', 'prop-2', 'prop-8'],
 };
 
-export const tenantUser: User = {
-    id: 'ten-1', // Corresponds to Alice Johnson
-    name: 'Alice Johnson',
+// We can create tenant user objects from the main data file
+const tenantUsers: User[] = tenants.map(t => ({
+    id: t.id,
+    name: t.name,
+    email: t.email,
     role: 'tenant',
-    email: 'alice.j@example.com',
-}
-
-interface CurrentUserState {
-  user: User;
-  setUser: (user: User) => void;
-}
-
-export const useCurrentUser = create<CurrentUserState>((set) => ({
-  user: adminUser, // Default to admin
-  setUser: (user) => set({ user }),
 }));
 
+
+// For the prototype, we can use a hardcoded tenant or select one
+export const tenantUser: User = tenantUsers[0];
+
+export const allMockUsers: User[] = [
+    adminUser,
+    workerUser,
+    ...tenantUsers,
+]
+
+interface CurrentUserState {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (user: User) => void;
+  logout: () => void;
+}
+
+export const useCurrentUser = create<CurrentUserState>()(
+    persist(
+        (set) => ({
+            user: null,
+            isAuthenticated: false,
+            isLoading: true,
+            login: (user) => set({ user, isAuthenticated: true }),
+            logout: () => set({ user: null, isAuthenticated: false }),
+        }),
+        {
+            name: 'current-user-storage', // name of the item in the storage (must be unique)
+            storage: createJSONStorage(() => sessionStorage), // (optional) by default, 'localStorage' is used
+            onRehydrateStorage: () => (state) => {
+                if (state) {
+                    state.isLoading = false;
+                }
+            },
+        }
+    )
+);
+
     
+

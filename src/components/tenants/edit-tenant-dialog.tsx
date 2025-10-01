@@ -41,6 +41,7 @@ export default function EditTenantDialog({
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(tenant.name);
   const [email, setEmail] = useState(tenant.email);
+  const [phone, setPhone] = useState(tenant.phone);
   const [propertyId, setPropertyId] = useState(tenant.propertyId);
   const [leaseEndDate, setLeaseEndDate] = useState<Date | undefined>(
     tenant.leaseEndDate ? parseISO(tenant.leaseEndDate) : undefined
@@ -52,6 +53,7 @@ export default function EditTenantDialog({
     if (open) {
         setName(tenant.name);
         setEmail(tenant.email);
+        setPhone(tenant.phone);
         setPropertyId(tenant.propertyId);
         setLeaseEndDate(tenant.leaseEndDate ? parseISO(tenant.leaseEndDate) : undefined);
         setRent(tenant.rent.toString());
@@ -64,6 +66,7 @@ export default function EditTenantDialog({
       ...tenant,
       name,
       email,
+      phone,
       propertyId,
       leaseEndDate: leaseEndDate ? format(leaseEndDate, 'yyyy-MM-dd') : '',
       rent: parseInt(rent) || 0,
@@ -116,6 +119,18 @@ export default function EditTenantDialog({
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              className="col-span-3"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="phone" className="text-right">
+              Phone
+            </Label>
+            <Input
+              id="phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
               className="col-span-3"
             />
           </div>

@@ -106,6 +106,51 @@ export const properties: Property[] = [
       PlaceHolderImages.find((img) => img.id === "property-6")?.imageHint || "",
     assignedWorkerId: "user-worker-2",
   },
+   {
+    id: "prop-7",
+    title: "Lakeside Retreat",
+    address: "77 Shoreline Way, Laketown, USA",
+    price: 2800,
+    beds: 3,
+    baths: 2,
+    sqft: 1800,
+    type: "Cabin",
+    imageUrl:
+      PlaceHolderImages.find((img) => img.id === "property-7")?.imageUrl || "",
+    imageHint:
+      PlaceHolderImages.find((img) => img.id === "property-7")?.imageHint || "",
+    assignedWorkerId: null,
+  },
+  {
+    id: "prop-8",
+    title: "The Urban Garden",
+    address: "88 Flora St, Greendale, USA",
+    price: 1950,
+    beds: 2,
+    baths: 1,
+    sqft: 950,
+    type: "Apartment",
+    imageUrl:
+      PlaceHolderImages.find((img) => img.id === "property-8")?.imageUrl || "",
+    imageHint:
+      PlaceHolderImages.find((img) => img.id === "property-8")?.imageHint || "",
+    assignedWorkerId: "user-worker-1",
+  },
+  {
+    id: "prop-9",
+    title: "The Historian's Corner",
+    address: "9 Landmark Pl, Old Capital, USA",
+    price: 3100,
+    beds: 3,
+    baths: 2,
+    sqft: 2100,
+    type: "Townhouse",
+    imageUrl:
+      PlaceHolderImages.find((img) => img.id === "property-9")?.imageUrl || "",
+    imageHint:
+      PlaceHolderImages.find((img) => img.id === "property-9")?.imageHint || "",
+    assignedWorkerId: "user-worker-2",
+  },
 ];
 
 export const tenants = [
@@ -118,6 +163,12 @@ export const tenants = [
     rent: 2200,
     email: "alice.j@example.com",
     phone: "(555) 123-4567",
+    onboardingStatus: [
+        { text: "Send welcome email", completed: true },
+        { text: "Sign lease agreement", completed: true },
+        { text: "Collect security deposit", completed: true },
+        { text: "Hand over keys", completed: true },
+    ]
   },
   {
     id: "ten-2",
@@ -128,6 +179,12 @@ export const tenants = [
     rent: 3500,
     email: "bob.w@example.com",
     phone: "(555) 234-5678",
+    onboardingStatus: [
+        { text: "Send welcome email", completed: true },
+        { text: "Sign lease agreement", completed: true },
+        { text: "Collect security deposit", completed: true },
+        { text: "Hand over keys", completed: true },
+    ]
   },
   {
     id: "ten-3",
@@ -138,6 +195,12 @@ export const tenants = [
     rent: 1850,
     email: "charlie.b@example.com",
     phone: "(555) 345-6789",
+    onboardingStatus: [
+        { text: "Send welcome email", completed: true },
+        { text: "Sign lease agreement", completed: true },
+        { text: "Collect security deposit", completed: true },
+        { text: "Hand over keys", completed: true },
+    ]
   },
   {
     id: "ten-4",
@@ -148,6 +211,12 @@ export const tenants = [
     rent: 1500,
     email: "diana.m@example.com",
     phone: "(555) 456-7890",
+    onboardingStatus: [
+        { text: "Send welcome email", completed: true },
+        { text: "Sign lease agreement", completed: true },
+        { text: "Collect security deposit", completed: true },
+        { text: "Hand over keys", completed: true },
+    ]
   },
   {
     id: "ten-5",
@@ -158,6 +227,12 @@ export const tenants = [
     rent: 4200,
     email: "ethan.d@example.com",
     phone: "(555) 567-8901",
+    onboardingStatus: [
+        { text: "Send welcome email", completed: true },
+        { text: "Sign lease agreement", completed: true },
+        { text: "Collect security deposit", completed: true },
+        { text: "Hand over keys", completed: true },
+    ]
   },
   {
     id: "ten-6",
@@ -168,7 +243,33 @@ export const tenants = [
     rent: 2150,
     email: "fiona.g@example.com",
     phone: "(555) 678-9012",
+    onboardingStatus: [
+        { text: "Send welcome email", completed: true },
+        { text: "Sign lease agreement", completed: true },
+        { text: "Collect security deposit", completed: false },
+        { text: "Hand over keys", completed: false },
+    ]
   },
+  {
+    id: "ten-7",
+    name: "George Harris",
+    propertyId: "prop-2", // Example property
+    leaseEndDate: "2024-11-30",
+    status: "Active",
+    rent: 1200,
+    email: "george.h@example.com",
+    phone: "(555) 789-0123",
+  },
+  {
+    id: "ten-8",
+    name: "Hannah Lewis",
+    propertyId: "prop-3", // Example property
+    leaseEndDate: "2025-01-31",
+    status: "Active",
+    rent: 850,
+    email: "hannah.l@example.com",
+    phone: "(555) 890-1234",
+  }
 ];
 
 export const workers = [
@@ -196,9 +297,12 @@ export const maintenanceRequests = [
     tenantId: "ten-1",
     propertyId: "prop-1",
     issue: "Leaky faucet in kitchen",
+    details:
+      "The kitchen sink is leaking under the cabinet. It seems to be coming from the cold water line.",
     dateSubmitted: "2024-07-20",
     status: "New",
     priority: "High",
+    category: "Plumbing",
     assignedWorkerId: null,
   },
   {
@@ -206,9 +310,11 @@ export const maintenanceRequests = [
     tenantId: "ten-2",
     propertyId: "prop-2",
     issue: "A/C unit not cooling",
+    details: "The A/C is running but it's not blowing cold air. The filter was recently changed.",
     dateSubmitted: "2024-07-19",
     status: "Completed",
     priority: "High",
+    category: "HVAC",
     assignedWorkerId: "user-worker-1",
   },
   {
@@ -216,9 +322,11 @@ export const maintenanceRequests = [
     tenantId: "ten-3",
     propertyId: "prop-3",
     issue: "Broken garbage disposal",
+    details: "The garbage disposal hums but doesn't spin. I've tried resetting it with no luck.",
     dateSubmitted: "2024-07-21",
     status: "New",
     priority: "Medium",
+    category: "Appliance",
     assignedWorkerId: "user-worker-2",
   },
   {
@@ -226,9 +334,11 @@ export const maintenanceRequests = [
     tenantId: "ten-4",
     propertyId: "prop-4",
     issue: "Cracked window pane",
+    details: "A small crack has appeared on the living room window. It's about 6 inches long.",
     dateSubmitted: "2024-07-15",
     status: "Completed",
     priority: "Low",
+    category: "Structural",
     assignedWorkerId: "user-worker-2",
   },
   {
@@ -236,9 +346,11 @@ export const maintenanceRequests = [
     tenantId: "ten-5",
     propertyId: "prop-5",
     issue: "Garage door opener is stuck",
+    details: "The garage door only opens about a foot and then stops. The remote and the wall button both have the same issue.",
     dateSubmitted: "2024-07-22",
     status: "New",
     priority: "Medium",
+    category: "Mechanical",
     assignedWorkerId: null,
   },
 ];
@@ -267,6 +379,7 @@ export const overdueTenants = [
 export const rentPayments = [
   {
     id: "rent-1",
+    tenantId: "ten-1",
     tenantName: "Alice Johnson",
     amount: 2200,
     date: "2024-07-01",
@@ -274,6 +387,7 @@ export const rentPayments = [
   },
   {
     id: "rent-2",
+    tenantId: "ten-2",
     tenantName: "Bob Williams",
     amount: 3500,
     date: "2024-07-01",
@@ -281,6 +395,7 @@ export const rentPayments = [
   },
   {
     id: "rent-3",
+    tenantId: "ten-7", // This corresponds to an overdue tenant
     tenantName: "George Harris",
     amount: 1200,
     date: "2024-07-01",
@@ -288,6 +403,7 @@ export const rentPayments = [
   },
   {
     id: "rent-4",
+    tenantId: "ten-8", // This corresponds to an overdue tenant
     tenantName: "Hannah Lewis",
     amount: 850,
     date: "2024-07-01",
@@ -295,6 +411,7 @@ export const rentPayments = [
   },
   {
     id: "rent-5",
+    tenantId: "ten-3",
     tenantName: "Charlie Brown",
     amount: 1850,
     date: "2024-07-02",

@@ -38,6 +38,7 @@ export default function AddTenantDialog({
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [propertyId, setPropertyId] = useState("");
   const [leaseEndDate, setLeaseEndDate] = useState<Date>();
   const [rent, setRent] = useState("");
@@ -47,6 +48,7 @@ export default function AddTenantDialog({
     const newTenant = {
       name,
       email,
+      phone,
       propertyId,
       leaseEndDate: leaseEndDate ? format(leaseEndDate, 'yyyy-MM-dd') : '',
       rent: parseInt(rent),
@@ -57,6 +59,7 @@ export default function AddTenantDialog({
     // Reset form
     setName("");
     setEmail("");
+    setPhone("");
     setPropertyId("");
     setLeaseEndDate(undefined);
     setRent("");
@@ -102,6 +105,18 @@ export default function AddTenantDialog({
               onChange={(e) => setEmail(e.target.value)}
               className="col-span-3"
               placeholder="e.g. john@example.com"
+            />
+          </div>
+           <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="phone" className="text-right">
+              Phone
+            </Label>
+            <Input
+              id="phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="col-span-3"
+              placeholder="(555) 555-5555"
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
@@ -185,6 +200,4 @@ export default function AddTenantDialog({
       </DialogContent>
     </Dialog>
   );
-} 
-
-
+}

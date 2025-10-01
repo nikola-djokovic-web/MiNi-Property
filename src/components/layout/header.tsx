@@ -9,30 +9,24 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Search, Moon, Sun, Bell, Check } from 'lucide-react';
+import { Search, Moon, Sun, Bell, Check, Languages } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
 import SearchDialog from '../search-dialog';
-import {
-  useCurrentUser,
-  adminUser,
-  workerUser,
-  tenantUser,
-  UserRole,
-} from '@/hooks/use-current-user';
+import { useCurrentUser } from '@/hooks/use-current-user';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNotifications } from '@/hooks/use-notifications';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
+import { usePathname, useRouter } from 'next/navigation';
+import { i18n } from '@/i18n-config';
+import Link from 'next/link';
+import { useTranslation } from '@/hooks/use-translation';
+
 
 function ThemeSwitcher() {
   const { setTheme, theme } = useTheme();
@@ -70,15 +64,57 @@ function ThemeSwitcher() {
   )
 }
 
+function LanguageSwitcher() {
+    const pathname = usePathname();
+
+    const getPathForLocale = (locale: string) => {
+        if (!pathname) return '/';
+        const segments = pathname.split('/');
+        segments[1] = locale;
+        return segments.join('/');
+    }
+    const currentLang = pathname.split('/')[1];
+
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="rounded-full">
+                    <Languages className="h-4 w-4" />
+                    <span className="sr-only">Change language</span>
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Select Language</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {i18n.locales.map(locale => (
+                     <DropdownMenuItem key={locale} asChild>
+                        <Link
+                            href={getPathForLocale(locale)}
+                            className={cn("w-full", currentLang === locale && 'bg-accent')}
+                        >
+                            {locale.toUpperCase()}
+                            {currentLang === locale && <Check className="ml-auto h-4 w-4" />}
+                        </Link>
+                    </DropdownMenuItem>
+                ))}
+            </DropdownMenuContent>
+        </DropdownMenu>
+    )
+}
+
 function Notifications() {
     const { user } = useCurrentUser();
-    const { notifications, getNotificationsForUser, markAsRead, markAllAsRead } = useNotifications();
+    const { getNotificationsForUser, markAsRead, markAllAsRead } = useNotifications();
     
+    if (!user) return null;
+
     const userNotifications = getNotificationsForUser(user.role);
     const unreadCount = userNotifications.filter(n => n.unread).length;
 
     const handleMarkAllReadForUser = () => {
-        markAllAsRead(user.role);
+        if (user) {
+            markAllAsRead(user.role);
+        }
     }
 
     return (
@@ -124,22 +160,21 @@ function Notifications() {
 }
 
 export default function AppHeader() {
+  const { dict } = useTranslation();
   const [searchOpen, setSearchOpen] = useState(false);
-  const { user, setUser } = useCurrentUser();
-  
-  const handleRoleChange = (role: string) => {
-    switch (role as UserRole) {
-      case 'admin':
-        setUser(adminUser);
-        break;
-      case 'worker':
-        setUser(workerUser);
-        break;
-      case 'tenant':
-        setUser(tenantUser);
-        break;
-    }
+  const { user, logout } = useCurrentUser();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const handleLogout = () => {
+    logout();
+    const currentLang = pathname.split('/')[1] || 'en';
+    router.push(`/${currentLang}/login`);
   };
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <>
@@ -156,6 +191,7 @@ export default function AppHeader() {
           </Button>
         </div>
         <ThemeSwitcher />
+        <LanguageSwitcher />
         <Notifications />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -183,28 +219,8 @@ export default function AppHeader() {
               </p>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                    <span>Switch Role</span>
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                    <DropdownMenuRadioGroup
-                        value={user.role}
-                        onValueChange={handleRoleChange}
-                        >
-                        <DropdownMenuRadioItem value="admin">Admin</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="worker">
-                            Worker
-                        </DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="tenant">
-                            Tenant
-                        </DropdownMenuRadioItem>
-                    </DropdownMenuRadioGroup>
-                </DropdownMenuSubContent>
-            </DropdownMenuSub>
-            <DropdownMenuSeparator />
             <DropdownMenuItem>Settings</DropdownMenuItem>
-            <DropdownMenuItem>Logout</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </header>

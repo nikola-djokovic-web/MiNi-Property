@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -28,27 +27,59 @@ export default function EditPropertyDialog({
   onUpdateProperty: (property: any) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState(property.title);
-  const [address, setAddress] = useState(property.address);
-  const [price, setPrice] = useState(property.price.toString());
-  const [beds, setBeds] = useState(property.beds.toString());
-  const [baths, setBaths] = useState(property.baths.toString());
-  const [sqft, setSqft] = useState(property.sqft.toString());
-  const [type, setType] = useState(property.type);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([property.imageUrl]);
-
+  const [title, setTitle] = useState(property.title ?? "");
+  const [address, setAddress] = useState(property.address ?? "");
+  const [price, setPrice] = useState(
+    property.price !== undefined && property.price !== null
+      ? String(property.price)
+      : ""
+  );
+  const [beds, setBeds] = useState(
+    property.beds !== undefined && property.beds !== null
+      ? String(property.beds)
+      : ""
+  );
+  const [baths, setBaths] = useState(
+    property.baths !== undefined && property.baths !== null
+      ? String(property.baths)
+      : ""
+  );
+  const [sqft, setSqft] = useState(
+    property.sqft !== undefined && property.sqft !== null
+      ? String(property.sqft)
+      : ""
+  );
+  const [type, setType] = useState(property.type ?? "");
+  const [imagePreviews, setImagePreviews] = useState<string[]>(
+    property.imageUrl ? [property.imageUrl] : []
+  );
 
   useEffect(() => {
     if (open) {
-      setTitle(property.title);
-      setAddress(property.address);
-      setPrice(property.price.toString());
-      setBeds(property.beds.toString());
-      setBaths(property.baths.toString());
-      setSqft(property.sqft.toString());
-      setType(property.type);
-      // In a real app, you'd handle existing image URLs vs new file uploads
-      setImagePreviews([property.imageUrl]);
+      setTitle(property.title ?? "");
+      setAddress(property.address ?? "");
+      setPrice(
+        property.price !== undefined && property.price !== null
+          ? String(property.price)
+          : ""
+      );
+      setBeds(
+        property.beds !== undefined && property.beds !== null
+          ? String(property.beds)
+          : ""
+      );
+      setBaths(
+        property.baths !== undefined && property.baths !== null
+          ? String(property.baths)
+          : ""
+      );
+      setSqft(
+        property.sqft !== undefined && property.sqft !== null
+          ? String(property.sqft)
+          : ""
+      );
+      setType(property.type ?? "");
+      setImagePreviews(property.imageUrl ? [property.imageUrl] : []);
     }
   }, [open, property]);
 
@@ -70,19 +101,23 @@ export default function EditPropertyDialog({
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
-
   const handleSubmit = () => {
-    const updatedProperty = {
-      ...property,
+    const patch: any = {
       title,
       address,
-      price: parseInt(price) || 0,
-      beds: parseInt(beds) || 0,
-      baths: parseInt(baths) || 0,
-      sqft: parseInt(sqft) || 0,
       type,
-      imageUrl: imagePreviews[0] || property.imageUrl,
     };
+
+    if (price !== "") patch.price = Number(price);
+    if (beds !== "") patch.beds = Number(beds);
+    if (baths !== "") patch.baths = Number(baths);
+    if (sqft !== "") patch.sqft = Number(sqft);
+
+    if (imagePreviews[0]) {
+      patch.imageUrl = imagePreviews[0];
+    }
+
+    const updatedProperty = { ...property, ...patch };
     onUpdateProperty(updatedProperty);
     setOpen(false);
   };
@@ -193,41 +228,56 @@ export default function EditPropertyDialog({
               />
             </div>
             <div className="grid grid-cols-4 items-start gap-4">
-               <Label htmlFor="photo" className="text-right pt-2">
-                  Photos
+              <Label htmlFor="photo" className="text-right pt-2">
+                Photos
               </Label>
-               <div className="col-span-3">
-                   <Input id="photo" type="file" accept="image/*" onChange={handleImageChange} multiple className="hidden" />
-                   <Button asChild variant="outline">
-                       <Label htmlFor="photo" className="cursor-pointer">
-                           <Upload className="mr-2 h-4 w-4" />
-                           Choose Images
-                       </Label>
-                   </Button>
-               </div>
-             </div>
-          </div>
-           {imagePreviews.length > 0 && (
-              <div className="space-y-4">
-                  <ScrollArea>
-                    <div className="flex space-x-4 pb-4">
-                      {imagePreviews.map((src, index) => (
-                          <div key={index} className="relative flex-shrink-0">
-                              <Image src={src} alt={`Property preview ${index + 1}`} width={100} height={75} className="rounded-md object-cover h-[75px] w-[100px]"/>
-                              <Button
-                                  variant="destructive"
-                                  size="icon"
-                                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                                  onClick={() => handleRemoveImage(index)}
-                              >
-                                  <X className="h-4 w-4" />
-                              </Button>
-                          </div>
-                      ))}
-                    </div>
-                    <ScrollBar orientation="horizontal" />
-                  </ScrollArea>
+              <div className="col-span-3">
+                <Input
+                  id="photo"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  multiple
+                  className="hidden"
+                />
+                <Button asChild variant="outline">
+                  <Label htmlFor="photo" className="cursor-pointer">
+                    <Upload className="mr-2 h-4 w-4" />
+                    Choose Images
+                  </Label>
+                </Button>
               </div>
+            </div>
+          </div>
+          {imagePreviews.length > 0 && (
+            <div className="space-y-4">
+              <ScrollArea>
+                <div className="flex space-x-4 pb-4">
+                  {imagePreviews
+                    .filter((src) => !!src)
+                    .map((src, index) => (
+                      <div key={index} className="relative flex-shrink-0">
+                        <Image
+                          src={src}
+                          alt={`Property preview ${index + 1}`}
+                          width={100}
+                          height={75}
+                          className="rounded-md object-cover h-[75px] w-[100px]"
+                        />
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                          onClick={() => handleRemoveImage(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                </div>
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
+            </div>
           )}
         </div>
         <DialogFooter>

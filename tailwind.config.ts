@@ -1,4 +1,6 @@
 import type { Config } from 'tailwindcss';
+import { fontFamily } from 'tailwindcss/defaultTheme';
+
 
 function hslToRgb(h: number, s: number, l: number): [number, number, number] {
   s /= 100;
@@ -12,9 +14,6 @@ function hslToRgb(h: number, s: number, l: number): [number, number, number] {
 
 // Helper to convert HSL string to RGB values for Tailwind
 function withPrimaryRgb(config: Config) {
-    const primaryHsl = 'var(--primary)'; // e.g., "221.2 83.2% 53.3%"
-    const match = primaryHsl.match(/(\d+(\.\d+)?)\s+(\d+(\.\d+)?)%\s+(\d+(\.\d+)?)%/);
-
     if (config.theme?.extend?.colors) {
       const primaryColor = config.theme.extend.colors.primary;
       if (typeof primaryColor === 'object' && primaryColor !== null && 'DEFAULT' in primaryColor) {
@@ -52,6 +51,14 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['var(--font-sans)', ...fontFamily.sans],
+        serif: ['var(--font-serif)', ...fontFamily.serif],
+        mono: ['var(--font-mono)', ...fontFamily.mono],
+        playfair: ['var(--font-playfair)', ...fontFamily.serif],
+        oswald: ['var(--font-oswald)', ...fontFamily.sans],
+        lato: ['var(--font-lato)', ...fontFamily.sans],
+      },
       colors: {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',

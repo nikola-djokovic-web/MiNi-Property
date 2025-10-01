@@ -1,7 +1,10 @@
 
+'use client';
+
 import { create } from 'zustand';
 import { allNotifications as initialNotifications, Notification } from '@/lib/notifications';
 import { UserRole } from './use-current-user';
+import { generateSmartNotifications } from '@/lib/notification-service';
 
 interface NotificationState {
   notifications: Notification[];
@@ -12,6 +15,7 @@ interface NotificationState {
 }
 
 let notificationIdCounter = initialNotifications.length + 1;
+let hasGeneratedSmartNotifications = false;
 
 export const useNotifications = create<NotificationState>((set, get) => ({
   notifications: initialNotifications.sort((a, b) => b.id.localeCompare(a.id)),
@@ -44,6 +48,21 @@ export const useNotifications = create<NotificationState>((set, get) => ({
   },
 
   getNotificationsForUser: (role) => {
+    if (!hasGeneratedSmartNotifications) {
+      const smartNotifications = generateSmartNotifications(get().notifications);
+      if (smartNotifications.length > 0) {
+        const newNotificationsWithIds = smartNotifications.map(n => ({
+          ...n,
+          id: `notif-${notificationIdCounter++}`,
+        }));
+        
+        set(state => ({
+          notifications: [...newNotificationsWithIds, ...state.notifications].sort((a, b) => b.id.localeCompare(a.id)),
+        }));
+      }
+      hasGeneratedSmartNotifications = true;
+    }
+    
     return get().notifications.filter(n => n.role === role || n.role === 'all');
   },
 }));

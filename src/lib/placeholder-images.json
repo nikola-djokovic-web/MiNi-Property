@@ -35,6 +35,24 @@
       "description": "Luxury penthouse apartment",
       "imageUrl": "https://images.unsplash.com/photo-1565623833408-d77e39b88af6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxsdXh1cnklMjBwZW50aG91c2V8ZW58MHx8fHwxNzU4NzQzNDMzfDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "luxury penthouse"
+    },
+    {
+      "id": "property-7",
+      "description": "Lakeside cabin retreat",
+      "imageUrl": "https://images.unsplash.com/photo-1594498654807-409156e52296?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxsYWtlc2lkZSUyMGNhYmlufGVufDB8fHx8MTc1ODg3NzI4N3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "lakeside cabin"
+    },
+    {
+      "id": "property-8",
+      "description": "Urban apartment with a garden",
+      "imageUrl": "https://images.unsplash.com/photo-1620626309853-3757d91a1415?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHx1cmJhbiUyMGdhcmRlbiUyMGFwYXJ0bWVudHxlbnwwfHx8fDE3NTg4NzcyMzl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "urban garden"
+    },
+    {
+      "id": "property-9",
+      "description": "Historic townhouse exterior",
+      "imageUrl": "https://images.unsplash.com/photo-1568772585403-d664155a5351?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxoaXN0b3JpYyUyMHRvd25ob3VzZXxlbnwwfHx8fDE3NTg4NzcxODd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "historic townhouse"
     }
   ]
 }

@@ -12,3 +12,4 @@ coverage
 npm-debug.log*
 yarn-*.log*
 pnpm-debug.log*
+/src/generated/prisma
