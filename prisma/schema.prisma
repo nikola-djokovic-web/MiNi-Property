@@ -22,6 +22,8 @@ model Tenant {
   units               Unit[]
   leases              Lease[]
   maintenanceRequests MaintenanceRequest[]
+  notifications       Notification[]
+  webhooks            NotificationWebhook[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 }
@@ -30,9 +32,19 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String?
+  passwordHash String?
+  profileImage String? // URL to profile image
+  companyName String? // Company name for branding
+  companyLogo String? // URL to company logo
   role      String // owner, admin, manager, maintenance, accountant
   tenantId  String
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  // Property assignment for tenants
+  propertyId String?
+  property   Property? @relation("UserProperty", fields: [propertyId], references: [id], onDelete: SetNull)
+  
+  notifications Notification[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -46,6 +58,11 @@ model Property {
   city               String
   country            String               @default("DE")
   units              Unit[]
+  invites            Invite[]
+  
+  // User assignments
+  assignedUsers      User[]               @relation("UserProperty")
+  
   // UI/display fields
   title              String               @default("")
   imageUrl           String               @default("")
@@ -99,4 +116,109 @@ model Lease {
   monthlyRent Decimal   @db.Decimal(10, 2)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+model Invite {
+  id         String   @id @default(cuid())
+  tenantId   String
+  email      String
+  userId     String
+  token      String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  
+  // Property assignment for tenant invites
+  propertyId String?
+  property   Property? @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  // (optional) referential integrity if you want:
+  // user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  // Target user (can be null for role-based notifications)
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Notification content
+  title       String
+  description String
+  icon        String   @default("Bell") // Lucide icon name
+  type        String   @default("info") // info, success, warning, error
+  priority    String   @default("normal") // low, normal, high, urgent
+  
+  // Navigation and interaction
+  navigationUrl String?
+  actionLabel   String?
+  actionUrl     String?
+  
+  // Status
+  read        Boolean  @default(false)
+  readAt      DateTime?
+  
+  // Role targeting (for role-based notifications)
+  targetRole  String? // admin, tenant, worker, etc.
+  
+  // Related entities (for context)
+  relatedType String? // property, maintenance_request, tenant, etc.
+  relatedId   String?
+  
+  // Metadata
+  metadata    Json?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Webhook deliveries
+  webhookDeliveries NotificationWebhookDelivery[]
+}
+
+model NotificationWebhook {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  name        String
+  url         String
+  secret      String?  // For webhook signature verification
+  active      Boolean  @default(true)
+  
+  // Event filtering
+  events      String[] // Array of event types to subscribe to
+  
+  // Headers
+  headers     Json?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  deliveries  NotificationWebhookDelivery[]
+}
+
+model NotificationWebhookDelivery {
+  id             String              @id @default(cuid())
+  webhookId      String
+  webhook        NotificationWebhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  notificationId String
+  notification   Notification        @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  
+  // Delivery details
+  status         String   @default("pending") // pending, delivered, failed, retrying
+  statusCode     Int?
+  responseBody   String?
+  error          String?
+  
+  // Retry information
+  attempts       Int      @default(0)
+  maxAttempts    Int      @default(3)
+  nextRetryAt    DateTime?
+  
+  sentAt         DateTime?
+  deliveredAt    DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }

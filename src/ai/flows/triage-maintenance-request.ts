@@ -37,7 +37,77 @@ export type TriageMaintenanceRequestOutput = z.infer<
 export async function triageMaintenanceRequest(
   input: TriageMaintenanceRequestInput
 ): Promise<TriageMaintenanceRequestOutput> {
-  return triageMaintenanceRequestFlow(input);
+  try {
+    // Check if API key is available
+    if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
+      console.warn('No Gemini API key found, using fallback triage logic');
+      return fallbackTriage(input);
+    }
+    
+    return await triageMaintenanceRequestFlow(input);
+  } catch (error) {
+    console.warn('AI triage failed, using fallback logic:', error);
+    return fallbackTriage(input);
+  }
+}
+
+// Fallback logic when AI is not available
+function fallbackTriage(input: TriageMaintenanceRequestInput): TriageMaintenanceRequestOutput {
+  const title = input.title.toLowerCase();
+  const details = input.details.toLowerCase();
+  const combined = `${title} ${details}`;
+
+  // Determine priority based on keywords
+  let priority: 'Low' | 'Medium' | 'High' = 'Medium';
+  
+  // High priority keywords
+  const highPriorityKeywords = [
+    'emergency', 'urgent', 'flooding', 'flood', 'leak', 'major leak', 
+    'no heat', 'no heating', 'no hot water', 'electrical', 'electricity',
+    'gas', 'safety', 'dangerous', 'broken lock', 'security', 'fire',
+    'smoke', 'sparking', 'water damage', 'burst pipe', 'no power'
+  ];
+  
+  // Low priority keywords  
+  const lowPriorityKeywords = [
+    'cosmetic', 'paint', 'minor', 'small', 'touch up', 'aesthetic',
+    'squeaky', 'loose', 'slow', 'sticky', 'maintenance'
+  ];
+
+  if (highPriorityKeywords.some(keyword => combined.includes(keyword))) {
+    priority = 'High';
+  } else if (lowPriorityKeywords.some(keyword => combined.includes(keyword))) {
+    priority = 'Low';
+  }
+
+  // Determine category based on keywords
+  let category = 'Other';
+  
+  if (combined.includes('water') || combined.includes('plumb') || combined.includes('drain') || 
+      combined.includes('toilet') || combined.includes('sink') || combined.includes('pipe') ||
+      combined.includes('faucet') || combined.includes('shower') || combined.includes('leak')) {
+    category = 'Plumbing';
+  } else if (combined.includes('electric') || combined.includes('power') || combined.includes('outlet') ||
+             combined.includes('light') || combined.includes('wiring') || combined.includes('breaker')) {
+    category = 'Electrical';
+  } else if (combined.includes('heat') || combined.includes('hvac') || combined.includes('air') ||
+             combined.includes('ac') || combined.includes('furnace') || combined.includes('thermostat') ||
+             combined.includes('cooling') || combined.includes('ventilation')) {
+    category = 'HVAC';
+  } else if (combined.includes('appliance') || combined.includes('refrigerator') || combined.includes('stove') ||
+             combined.includes('dishwasher') || combined.includes('washer') || combined.includes('dryer') ||
+             combined.includes('oven') || combined.includes('microwave')) {
+    category = 'Appliance';
+  } else if (combined.includes('door') || combined.includes('window') || combined.includes('lock') ||
+             combined.includes('roof') || combined.includes('wall') || combined.includes('floor') ||
+             combined.includes('ceiling') || combined.includes('structural')) {
+    category = 'Structural';
+  } else if (combined.includes('pest') || combined.includes('bug') || combined.includes('mice') ||
+             combined.includes('rat') || combined.includes('insect') || combined.includes('ant')) {
+    category = 'Pest Control';
+  }
+
+  return { priority, category };
 }
 
 const prompt = ai.definePrompt({

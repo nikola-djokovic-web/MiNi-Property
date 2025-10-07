@@ -1,4 +1,5 @@
 
+"use client";
 
 import {
   Card,
@@ -9,6 +10,9 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Check } from "lucide-react";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 
 const roles = [
   {
@@ -45,6 +49,22 @@ const roles = [
 ];
 
 export default function RolesPage() {
+  const { user } = useCurrentUser();
+  const pathname = usePathname();
+  
+  // Redirect non-admin users to theme settings
+  useEffect(() => {
+    if (user && user.role !== 'admin') {
+      const lang = pathname.split('/')[1];
+      window.location.href = `/${lang}/settings/theme`;
+    }
+  }, [user, pathname]);
+  
+  // Don't render anything for non-admin users
+  if (user && user.role !== 'admin') {
+    return null;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">

@@ -14,7 +14,14 @@ import { useToast } from '@/hooks/use-toast';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
-import { useTranslation } from '@/hooks/use-translation';
+
+// Simple fallback translations to avoid server-only import issues
+const translations = {
+  title: "Theme Settings",
+  description: "Customize your application appearance and typography",
+  colorScheme: "Color Scheme",
+  typography: "Typography"
+};
 
 type ThemeColors = {
   background: string;
@@ -153,7 +160,6 @@ function generateThemeCss(theme: ThemePreset) {
 }
 
 export default function ThemePage() {
-  const { dict } = useTranslation();
   const { toast } = useToast();
   const [selectedTheme, setSelectedTheme] = useState(themePresets[0].name);
   const [selectedFont, setSelectedFont] = useState(fontPresets[0].name);
@@ -189,14 +195,14 @@ export default function ThemePage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{dict.settings.theme.title}</CardTitle>
+        <CardTitle>{translations.title}</CardTitle>
         <CardDescription>
-          {dict.settings.theme.description}
+          {translations.description}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-8">
         <div>
-            <h3 className="text-lg font-medium mb-4">{dict.settings.theme.colorScheme}</h3>
+            <h3 className="text-lg font-medium mb-4">{translations.colorScheme}</h3>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {themePresets.map((theme) => (
                 <button key={theme.name} onClick={() => applyTheme(theme)}>
@@ -240,7 +246,7 @@ export default function ThemePage() {
         <Separator />
 
         <div>
-            <h3 className="text-lg font-medium mb-4">{dict.settings.theme.typography}</h3>
+            <h3 className="text-lg font-medium mb-4">{translations.typography}</h3>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {fontPresets.map((font) => (
                     <button key={font.name} onClick={() => applyFont(font)}>

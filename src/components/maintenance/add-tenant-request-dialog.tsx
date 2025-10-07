@@ -69,13 +69,14 @@ export default function AddTenantRequestDialog({
     if (open) {
         setIssue("");
         setDetails("");
-        if (properties.length === 1 && !propertyId) {
+        // Auto-select property if there's only one
+        if (properties.length === 1) {
             setPropertyId(properties[0].id);
-        } else if (properties.length > 1) {
+        } else {
             setPropertyId(undefined);
         }
     }
-  }, [open, properties, propertyId]);
+  }, [open, properties]);
 
 
   const handleTemplateChange = (templateValue: string) => {
@@ -129,6 +130,13 @@ export default function AddTenantRequestDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
+          {properties.length === 0 && (
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                No properties are available for maintenance requests. Please contact your administrator.
+              </p>
+            </div>
+          )}
           {properties.length > 1 && (
              <div className="space-y-2">
                 <Label htmlFor="property">Property</Label>
@@ -143,6 +151,14 @@ export default function AddTenantRequestDialog({
                     </SelectContent>
                 </Select>
              </div>
+          )}
+          {properties.length === 1 && (
+            <div className="space-y-2">
+              <Label>Property</Label>
+              <div className="p-2 bg-muted rounded-md text-sm">
+                {properties[0].title}
+              </div>
+            </div>
           )}
           <div className="space-y-2">
             <Label htmlFor="issue">Issue Title</Label>

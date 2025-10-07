@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -23,10 +22,14 @@ import {
 } from "@/components/ui/select";
 import { Calendar as CalendarIcon, Pencil } from "lucide-react";
 import { Property } from "@/lib/data";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { format, parseISO } from 'date-fns';
+import { format, parseISO } from "date-fns";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 export default function EditTenantDialog({
@@ -46,18 +49,22 @@ export default function EditTenantDialog({
   const [leaseEndDate, setLeaseEndDate] = useState<Date | undefined>(
     tenant.leaseEndDate ? parseISO(tenant.leaseEndDate) : undefined
   );
-  const [rent, setRent] = useState(tenant.rent.toString());
+  const [rent, setRent] = useState(
+    tenant?.rent != null ? String(tenant.rent) : ""
+  );
   const [status, setStatus] = useState(tenant.status);
 
   useEffect(() => {
     if (open) {
-        setName(tenant.name);
-        setEmail(tenant.email);
-        setPhone(tenant.phone);
-        setPropertyId(tenant.propertyId);
-        setLeaseEndDate(tenant.leaseEndDate ? parseISO(tenant.leaseEndDate) : undefined);
-        setRent(tenant.rent.toString());
-        setStatus(tenant.status);
+      setName(tenant.name);
+      setEmail(tenant.email);
+      setPhone(tenant.phone);
+      setPropertyId(tenant.propertyId);
+      setLeaseEndDate(
+        tenant.leaseEndDate ? parseISO(tenant.leaseEndDate) : undefined
+      );
+      setRent(tenant?.rent != null ? String(tenant.rent) : "");
+      setStatus(tenant.status);
     }
   }, [open, tenant]);
 
@@ -68,7 +75,7 @@ export default function EditTenantDialog({
       email,
       phone,
       propertyId,
-      leaseEndDate: leaseEndDate ? format(leaseEndDate, 'yyyy-MM-dd') : '',
+      leaseEndDate: leaseEndDate ? format(leaseEndDate, "yyyy-MM-dd") : "",
       rent: parseInt(rent) || 0,
       status,
     };
@@ -80,15 +87,15 @@ export default function EditTenantDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <Tooltip>
         <TooltipTrigger asChild>
-            <DialogTrigger asChild>
-                <Button variant="ghost" size="icon">
-                    <Pencil className="h-4 w-4" />
-                    <span className="sr-only">Edit Tenant</span>
-                </Button>
-            </DialogTrigger>
+          <DialogTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <Pencil className="h-4 w-4" />
+              <span className="sr-only">Edit Tenant</span>
+            </Button>
+          </DialogTrigger>
         </TooltipTrigger>
         <TooltipContent>
-            <p>Edit Tenant</p>
+          <p>Edit Tenant</p>
         </TooltipContent>
       </Tooltip>
       <DialogContent className="sm:max-w-[425px]">
@@ -105,7 +112,7 @@ export default function EditTenantDialog({
             </Label>
             <Input
               id="name"
-              value={name}
+              value={name ?? ""}
               onChange={(e) => setName(e.target.value)}
               className="col-span-3"
             />
@@ -117,7 +124,7 @@ export default function EditTenantDialog({
             <Input
               id="email"
               type="email"
-              value={email}
+              value={email ?? ""}
               onChange={(e) => setEmail(e.target.value)}
               className="col-span-3"
             />
@@ -129,7 +136,7 @@ export default function EditTenantDialog({
             <Input
               id="phone"
               type="tel"
-              value={phone}
+              value={phone ?? ""}
               onChange={(e) => setPhone(e.target.value)}
               className="col-span-3"
             />
@@ -158,7 +165,7 @@ export default function EditTenantDialog({
             <Input
               id="rent"
               type="number"
-              value={rent}
+              value={rent ?? ""}
               onChange={(e) => setRent(e.target.value)}
               className="col-span-3"
             />
@@ -177,7 +184,11 @@ export default function EditTenantDialog({
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {leaseEndDate ? format(leaseEndDate, "PPP") : <span>Pick a date</span>}
+                  {leaseEndDate ? (
+                    format(leaseEndDate, "PPP")
+                  ) : (
+                    <span>Pick a date</span>
+                  )}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">

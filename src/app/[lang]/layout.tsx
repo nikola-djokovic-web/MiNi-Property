@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import { i18n, Locale } from "@/i18n-config";
 import { getDictionary } from "@/dictionaries";
-import { TranslationProvider } from "@/hooks/use-translation";
+// import { TranslationProvider } from "@/hooks/use-translation";
+import { TranslationProvider } from "./translation-provider";
 import {
   Inter,
   Lora,

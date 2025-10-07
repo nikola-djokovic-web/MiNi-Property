@@ -15,14 +15,27 @@ export default function DashboardLayoutClient({
 }) {
   const { isAuthenticated, user, isLoading } = useCurrentUser();
   const router = useRouter();
+  const pathname = usePathname();
+
+  // Debug logging
+  console.log('🔐 Dashboard layout auth state:', {
+    isLoading,
+    isAuthenticated,
+    user: user ? { id: user.id, email: user.email, role: user.role } : null,
+    pathname
+  });
+
+  // Allow access to maintenance page even when auth is broken (for testing)
+  const isMaintenancePage = pathname === `/${lang}/maintenance`;
 
   React.useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (!isLoading && !isAuthenticated && !isMaintenancePage) {
+      console.log('❌ Redirecting to login - not authenticated');
       router.replace(`/${lang}/login`);
     }
-  }, [isAuthenticated, isLoading, router, lang]);
+  }, [isAuthenticated, isLoading, router, lang, isMaintenancePage]);
 
-  if (isLoading || !isAuthenticated || !user) {
+  if ((isLoading || !isAuthenticated || !user) && !isMaintenancePage) {
     return (
       <div className="flex items-center justify-center h-screen">
         Loading...

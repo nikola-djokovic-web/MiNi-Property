@@ -473,7 +473,7 @@ export default function MaintenanceDetailPage() {
                 <Calendar className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <p className="font-medium">Submitted</p>
-                  <p className="text-muted-foreground">{request.dateSubmitted}</p>
+                  <p className="text-muted-foreground">{new Date(request.dateSubmitted).toLocaleDateString('de-DE')}</p>
                 </div>
               </div>
                <div className="flex items-center justify-between">

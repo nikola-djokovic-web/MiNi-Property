@@ -15,20 +15,23 @@ function hslToRgb(h: number, s: number, l: number): [number, number, number] {
 // Helper to convert HSL string to RGB values for Tailwind
 function withPrimaryRgb(config: Config) {
     if (config.theme?.extend?.colors) {
-      const primaryColor = config.theme.extend.colors.primary;
+      const colors = config.theme.extend.colors;
+      const primaryColor = colors && typeof colors === 'object' && 'primary' in colors ? colors.primary : null;
       if (typeof primaryColor === 'object' && primaryColor !== null && 'DEFAULT' in primaryColor) {
         const hslString = primaryColor.DEFAULT;
-        const hslMatch = hslString.match(/hsl\((\d+(\.\d+)?)\s(\d+(\.\d+)?)%\s(\d+(\.\d+)?)%\)/);
+        if (typeof hslString === 'string') {
+          const hslMatch = hslString.match(/hsl\((\d+(\.\d+)?)\s(\d+(\.\d+)?)%\s(\d+(\.\d+)?)%\)/);
 
-        if (hslMatch) {
-            const [h, s, l] = [parseFloat(hslMatch[1]), parseFloat(hslMatch[3]), parseFloat(hslMatch[5])];
-            const [r, g, b] = hslToRgb(h, s, l);
-            
-            if (!config.theme.extend.colors) {
-                config.theme.extend.colors = {};
-            }
-             // @ts-ignore
-             config.theme.extend.colors.primary.rgb = `${r} ${g} ${b}`;
+          if (hslMatch) {
+              const [h, s, l] = [parseFloat(hslMatch[1]), parseFloat(hslMatch[3]), parseFloat(hslMatch[5])];
+              const [r, g, b] = hslToRgb(h, s, l);
+              
+              if (!config.theme.extend.colors) {
+                  config.theme.extend.colors = {};
+              }
+               // @ts-ignore
+               config.theme.extend.colors.primary.rgb = `${r} ${g} ${b}`;
+          }
         }
       }
     }

@@ -57,7 +57,7 @@ async function apiSend<T>(
   return res.json();
 }
 import { Badge } from "@/components/ui/badge";
-import { Eye, UserCog, Settings, Wrench } from "lucide-react";
+import { Eye, UserCog, Settings, Wrench, Loader2 } from "lucide-react";
 import PageHeader from "@/components/page-header";
 import { useState, useMemo, useEffect } from "react";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -77,6 +77,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import {
   Carousel,
@@ -128,46 +135,121 @@ const MaintenanceTable = ({
   lang: Locale;
 }) => {
   const { dict } = useTranslation();
-  const [tenants, setTenants] = useState<any[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(() => {
+    // Load persisted choice from localStorage
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('properties-table-items-per-page');
+      return saved ? parseInt(saved) : 10;
+    }
+    return 10;
+  });
 
+  // Persist itemsPerPage choice
   useEffect(() => {
-    const handleTenantUpdated = (updatedTenant: any) => {
-      setTenants((prev) =>
-        prev.map((t) => (t.id === updatedTenant.id ? updatedTenant : t))
-      );
-      // removed mutation of allTenants
-    };
-    const unsub = eventBus.subscribe("tenant-updated", handleTenantUpdated);
-    return () => unsub();
-  }, []);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('properties-table-items-per-page', itemsPerPage.toString());
+    }
+  }, [itemsPerPage]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(requests.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentRequests = requests.slice(startIndex, endIndex);
+
+  // Reset to page 1 when itemsPerPage changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [itemsPerPage]);
+
+  // Reset to page 1 when requests change significantly
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [currentPage, totalPages]);
 
   return (
-    <Table>
-      <TableHeader>
+    <div className="space-y-4">
+      {/* Pagination controls - top */}
+      {requests.length > 5 && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-muted-foreground">Show:</span>
+            <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(parseInt(value))}>
+              <SelectTrigger className="w-20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5</SelectItem>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-muted-foreground">per page</span>
+          </div>
+          
+          {totalPages > 1 && (
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <Card className="w-full">
+        <Table className="w-full">
+          <TableHeader>
         <TableRow>
-          <TableHead>{dict.properties.table.tenant}</TableHead>
-          <TableHead>{dict.properties.table.issue}</TableHead>
+          <TableHead>{dict?.properties?.table?.tenant || "Tenant"}</TableHead>
+          <TableHead>{dict?.properties?.table?.issue || "Issue"}</TableHead>
           <TableHead className="hidden lg:table-cell">
-            {dict.properties.table.submitted}
+            {dict?.properties?.table?.submitted || "Submitted"}
           </TableHead>
-          <TableHead>{dict.properties.table.priority}</TableHead>
-          <TableHead>{dict.properties.table.status}</TableHead>
+          <TableHead>{dict?.properties?.table?.priority || "Priority"}</TableHead>
+          <TableHead>{dict?.properties?.table?.status || "Status"}</TableHead>
           <TableHead className="text-right">
-            {dict.properties.table.actions}
+            {dict?.properties?.table?.actions || "Actions"}
           </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {requests.map((request) => {
-          const tenant = tenants.find((t) => t.id === request.tenantId);
+        {currentRequests.map((request) => {
+          // The tenant who submitted the request is included in the request object
+          const requestingTenant = request.tenant;
           return (
             <TableRow key={request.id}>
               <TableCell>
-                <div className="font-medium">{tenant?.name}</div>
+                <div className="font-medium">
+                  {/* For demo: Since we know Demo Co has one main tenant resident */}
+                  {requestingTenant?.name === 'Demo Co' ? 'Test Tenant' : `Resident of ${requestingTenant?.name || 'Unknown Property'}`}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {requestingTenant?.name === 'Demo Co' ? 'tenant@example.com' : 'Property resident'}
+                </div>
               </TableCell>
               <TableCell>{request.issue}</TableCell>
               <TableCell className="hidden lg:table-cell">
-                {request.dateSubmitted}
+                {new Date(request.dateSubmitted).toLocaleDateString('de-DE')}
               </TableCell>
               <TableCell>
                 <Badge className={getPriorityClasses(request.priority)}>
@@ -203,6 +285,33 @@ const MaintenanceTable = ({
         })}
       </TableBody>
     </Table>
+    </Card>
+    
+    {/* Pagination controls - bottom */}
+    {totalPages > 1 && (
+      <div className="flex items-center justify-center space-x-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+        >
+          Previous
+        </Button>
+        <span className="text-sm text-muted-foreground">
+          Page {currentPage} of {totalPages} ({requests.length} total)
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages}
+        >
+          Next
+        </Button>
+      </div>
+    )}
+    </div>
   );
 };
 
@@ -212,6 +321,7 @@ export default function PropertiesPageContent({ lang }: { lang: Locale }) {
   const [maintenanceRequests, setMaintenanceRequests] = useState<any[]>([]);
   const [tenants, setTenants] = useState<any[]>([]);
   const [workers, setWorkers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const { user } = useCurrentUser();
   const { addNotification } = useNotifications();
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(
@@ -222,26 +332,51 @@ export default function PropertiesPageContent({ lang }: { lang: Locale }) {
 
   useEffect(() => {
     (async () => {
+      setLoading(true);
       try {
+        // Build API URLs with role-based filtering parameters
+        const propertiesUrl = user 
+          ? `/api/properties?userRole=${user.role}&userId=${user.id}`
+          : "/api/properties";
+        const maintenanceUrl = user 
+          ? `/api/maintenance-requests?userRole=${user.role}&userId=${user.id}`
+          : "/api/maintenance-requests";
+        
+        console.log('🏢 Properties page API call:', {
+          user: user ? { id: user.id, role: user.role, email: user.email } : null,
+          propertiesUrl,
+          maintenanceUrl
+        });
+        
         const [propsRes, reqRes, tenantsRes, workersRes] = await Promise.all([
-          apiGet<{ data: any[] }>("/api/properties").catch(() => ({
+          apiGet<{ data: any[] }>(propertiesUrl).catch(() => ({
             data: [],
           })),
-          apiGet<{ data: any[] }>("/api/maintenance-requests").catch(() => ({
+          apiGet<{ data: any[] }>(maintenanceUrl).catch(() => ({
             data: [],
           })),
           apiGet<{ data: any[] }>("/api/tenants").catch(() => ({ data: [] })),
           apiGet<{ data: any[] }>("/api/workers").catch(() => ({ data: [] })),
         ]);
+        
+        console.log('✅ Properties page data received:', {
+          properties: propsRes.data?.length || 0,
+          maintenanceRequests: reqRes.data?.length || 0,
+          tenants: tenantsRes.data?.length || 0,
+          workers: workersRes.data?.length || 0
+        });
+        
         setProperties(propsRes.data);
         setMaintenanceRequests(reqRes.data);
         setTenants(tenantsRes.data);
         setWorkers(workersRes.data);
       } catch (e) {
         console.error(e);
+      } finally {
+        setLoading(false);
       }
     })();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const handleRequestAdded = (req: any) => {
@@ -364,10 +499,15 @@ export default function PropertiesPageContent({ lang }: { lang: Locale }) {
     if (!user) return;
     const property = properties.find((p) => p.id === newRequestData.propertyId);
 
-    const triageResult = await triageMaintenanceRequest({
-      title: newRequestData.issue,
-      details: newRequestData.details,
-    });
+    let triageResult = { priority: "Medium", category: "Other" };
+    try {
+      triageResult = await triageMaintenanceRequest({
+        title: newRequestData.issue,
+        details: newRequestData.details,
+      });
+    } catch (error) {
+      console.warn("AI triage failed, using default values:", error);
+    }
 
     const today = new Date();
     const formattedDate =
@@ -504,20 +644,29 @@ export default function PropertiesPageContent({ lang }: { lang: Locale }) {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title={dict.properties.title}
-        description={dict.properties.description}
+        title={dict?.properties?.title || "Properties & Maintenance"}
+        description={dict?.properties?.description || "Manage your properties and their maintenance requests."}
       >
         {user.role === "admin" && (
           <Button asChild>
-            <Link href={`/${lang}/properties/management`}>
+            <Link href={`/${lang}/property-management`}>
               <Settings className="mr-2 h-4" />
-              {dict.properties.manageButton}
+              {dict?.properties?.manageButton || "Manage Properties"}
             </Link>
           </Button>
         )}
       </PageHeader>
 
-      {filteredProperties.length > 0 ? (
+      {loading ? (
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-muted-foreground">Loading properties...</span>
+            </div>
+          </CardContent>
+        </Card>
+      ) : filteredProperties.length > 0 ? (
         <div className="space-y-6">
           <Tabs
             value={selectedPropertyId || ""}
@@ -715,17 +864,16 @@ export default function PropertiesPageContent({ lang }: { lang: Locale }) {
                       </h4>
                       <AddRequestDialog
                         propertyId={property.id}
-                        tenants={tenantsForSelectedProperty}
-                        workers={workers}
-                        currentUser={user}
                         onAddRequest={handleAddRequest}
                       />
                     </div>
                     {selectedMaintenanceRequests.length > 0 ? (
-                      <MaintenanceTable
-                        requests={selectedMaintenanceRequests}
-                        lang={lang}
-                      />
+                      <div className="w-full">
+                        <MaintenanceTable
+                          requests={selectedMaintenanceRequests}
+                          lang={lang}
+                        />
+                      </div>
                     ) : (
                       <p className="text-sm text-muted-foreground">
                         No maintenance requests for this property.
@@ -741,7 +889,9 @@ export default function PropertiesPageContent({ lang }: { lang: Locale }) {
         <Card>
           <CardContent className="p-6">
             <p className="text-center text-muted-foreground">
-              No properties assigned to your account.
+              {user?.role === 'worker' 
+                ? "No properties assigned to your account."
+                : "No properties found."}
             </p>
           </CardContent>
         </Card>

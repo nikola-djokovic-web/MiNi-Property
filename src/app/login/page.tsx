@@ -1,8 +1,6 @@
+// page.tsx (server component)
+import LoginPageContent from "@/app/[lang]/login/login-page-content";
 
-'use client';
-import { redirect } from 'next/navigation';
-
-// This page just redirects to the default locale's login page.
-export default function LoginRedirectPage() {
-  redirect('/en/login');
+export default function Page() {
+  return <LoginPageContent />;
 }

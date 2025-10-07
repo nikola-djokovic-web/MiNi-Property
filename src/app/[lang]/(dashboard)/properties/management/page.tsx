@@ -9,6 +9,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AnimatedTableRow } from "@/components/ui/animated-table-row";
+import { AnimatePresence } from "framer-motion";
 
 const TENANT_ID = process.env.NEXT_PUBLIC_DEMO_TENANT_ID ?? "";
 const MUST_HAVE_TENANT = TENANT_ID && TENANT_ID.trim().length > 0;
@@ -65,6 +67,7 @@ import eventBus from "@/lib/events";
 
 export default function PropertiesManagementPage() {
   const [properties, setProperties] = useState<any[]>([]);
+  const [deletingProperties, setDeletingProperties] = useState<Set<string>>(new Set());
   const [workers, setWorkers] = useState<any[]>([]);
   const { addNotification } = useNotifications();
   const pathname = usePathname();
@@ -167,11 +170,32 @@ export default function PropertiesManagementPage() {
 
   const handleDeleteProperty = async (propertyId: string) => {
     try {
+      // Mark as deleting to trigger magical effect
+      setDeletingProperties(prev => new Set([...prev, propertyId]));
+      
       await apiSend(`/api/properties/${propertyId}`, "DELETE");
-      eventBus.emit("property-deleted", propertyId);
+      
+      // The actual deletion will be handled by the magical effect callback
+      
     } catch (e) {
       console.error(e);
+      // If delete failed, remove from deleting set
+      setDeletingProperties(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(propertyId);
+        return newSet;
+      });
     }
+  };
+
+  const handleDeleteComplete = (propertyId: string) => {
+    // This is called after the magical effect completes
+    eventBus.emit("property-deleted", propertyId);
+    setDeletingProperties(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(propertyId);
+      return newSet;
+    });
   };
 
   const handleAssignWorker = (propertyId: string, workerId: string | null) => {
@@ -249,12 +273,18 @@ export default function PropertiesManagementPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paged.map((property) => {
-                const assignedWorker = property.assignedWorkerId
-                  ? workers.find((w) => w.id === property.assignedWorkerId)
-                  : null;
-                return (
-                  <TableRow key={property.id}>
+              <AnimatePresence mode="popLayout">
+                {paged.map((property) => {
+                  const assignedWorker = property.assignedWorkerId
+                    ? workers.find((w) => w.id === property.assignedWorkerId)
+                    : null;
+                  return (
+                    <AnimatedTableRow 
+                      key={property.id} 
+                      layoutId={`property-${property.id}`}
+                      isVisible={!deletingProperties.has(property.id)}
+                      onDeleteComplete={() => handleDeleteComplete(property.id)}
+                    >
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-3">
                         {property.imageUrl ? (
@@ -341,9 +371,10 @@ export default function PropertiesManagementPage() {
                         </TooltipProvider>
                       </div>
                     </TableCell>
-                  </TableRow>
+                  </AnimatedTableRow>
                 );
               })}
+              </AnimatePresence>
             </TableBody>
           </Table>
           <div className="flex items-center justify-between p-3 border-t text-sm">

@@ -12,6 +12,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AnimatedTableRow } from "@/components/ui/animated-table-row";
+import { AnimatePresence } from "framer-motion";
 import { documents as initialDocuments } from "@/lib/data";
 import { FileText, FileType, Trash2 } from "lucide-react";
 import PageHeader from "@/components/page-header";
@@ -71,26 +73,28 @@ export default function DocumentsPage() {
             </TableHeader>
             <TableBody>
               <TooltipProvider>
-                {documents.map((doc) => (
-                  <TableRow key={doc.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        {getFileIcon(doc.name)}
-                        <span className="font-medium">{doc.name}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      {doc.type}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {doc.uploadDate}
-                    </TableCell>
-                    <TableCell>{doc.size}</TableCell>
-                    <TableCell className="text-right">
-                        <DeleteDocumentDialog document={doc} onDelete={() => handleDeleteDocument(doc.id)} />
-                    </TableCell>
-                  </TableRow>
-                ))}
+                <AnimatePresence mode="popLayout">
+                  {documents.map((doc) => (
+                    <AnimatedTableRow key={doc.id} layoutId={`document-${doc.id}`}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          {getFileIcon(doc.name)}
+                          <span className="font-medium">{doc.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        {doc.type}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {doc.uploadDate}
+                      </TableCell>
+                      <TableCell>{doc.size}</TableCell>
+                      <TableCell className="text-right">
+                          <DeleteDocumentDialog document={doc} onDelete={() => handleDeleteDocument(doc.id)} />
+                      </TableCell>
+                    </AnimatedTableRow>
+                  ))}
+                </AnimatePresence>
               </TooltipProvider>
             </TableBody>
           </Table>

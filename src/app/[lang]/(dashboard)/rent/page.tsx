@@ -108,7 +108,7 @@ export default function RentPage() {
                         <div className="font-medium">{payment.tenantName}</div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        {payment.date}
+                        {new Date(payment.date).toLocaleDateString('de-DE')}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         <Badge variant={getStatusVariant(payment.status)}>

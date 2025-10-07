@@ -3,7 +3,24 @@ export async function apiGet<T>(url: string, tenantId: string): Promise<T> {
     headers: { "x-tenant-id": tenantId },
     cache: "no-store",
   });
-  if (!res.ok) throw new Error(await res.text());
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    
+    // Try to parse as JSON first
+    let errorMessage = errorText;
+    try {
+      const errorJson = JSON.parse(errorText);
+      if (errorJson.error) {
+        errorMessage = errorJson.error;
+      }
+    } catch (parseError) {
+      // errorMessage is already set to errorText
+    }
+    
+    throw new Error(errorMessage);
+  }
+  
   return res.json();
 }
 
@@ -18,6 +35,23 @@ export async function apiSend<T>(
     headers: { "Content-Type": "application/json", "x-tenant-id": tenantId },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await res.text());
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    
+    // Try to parse as JSON first
+    let errorMessage = errorText;
+    try {
+      const errorJson = JSON.parse(errorText);
+      if (errorJson.error) {
+        errorMessage = errorJson.error;
+      }
+    } catch (parseError) {
+      // errorMessage is already set to errorText
+    }
+    
+    throw new Error(errorMessage);
+  }
+  
   return res.json();
 }

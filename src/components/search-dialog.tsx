@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Dialog,
@@ -11,102 +11,139 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import {
-  properties,
-  tenants,
-  documents,
-  maintenanceRequests,
-  workers,
-} from '@/lib/data';
-import {
   Building2,
   Users,
   FileText,
   Search as SearchIcon,
   Wrench,
   UserCog,
+  Home,
+  Calendar,
+  Loader2,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from './ui/scroll-area';
+import { usePathname } from 'next/navigation';
 
 interface SearchDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
+interface SearchResults {
+  properties: any[];
+  tenants: any[];
+  workers: any[];
+  maintenance: any[];
+  units: any[];
+  leases: any[];
+}
+
+const TENANT_ID = process.env.NEXT_PUBLIC_DEMO_TENANT_ID ?? "";
+
+async function searchData(query: string): Promise<SearchResults> {
+  if (!query || query.length < 2) {
+    return {
+      properties: [],
+      tenants: [],
+      workers: [],
+      maintenance: [],
+      units: [],
+      leases: []
+    };
+  }
+
+  const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`, {
+    headers: { "x-tenant-id": TENANT_ID },
+    cache: "no-store",
+  });
+  
+  if (!res.ok) {
+    throw new Error('Search failed');
+  }
+  
+  const result = await res.json();
+  return result.data;
+}
+
 export default function SearchDialog({ open, onOpenChange }: SearchDialogProps) {
   const [query, setQuery] = useState('');
+  const [results, setResults] = useState<SearchResults>({
+    properties: [],
+    tenants: [],
+    workers: [],
+    maintenance: [],
+    units: [],
+    leases: []
+  });
+  const [loading, setLoading] = useState(false);
+  const pathname = usePathname();
+  const lang = pathname.split('/')[1] || 'en';
 
   // Reset query when dialog is closed
   useEffect(() => {
     if (!open) {
       setQuery('');
+      setResults({
+        properties: [],
+        tenants: [],
+        workers: [],
+        maintenance: [],
+        units: [],
+        leases: []
+      });
     }
   }, [open]);
+
+  // Debounced search
+  useEffect(() => {
+    const timeoutId = setTimeout(async () => {
+      if (query.length >= 2) {
+        setLoading(true);
+        try {
+          const searchResults = await searchData(query);
+          setResults(searchResults);
+        } catch (error) {
+          console.error('Search error:', error);
+          setResults({
+            properties: [],
+            tenants: [],
+            workers: [],
+            maintenance: [],
+            units: [],
+            leases: []
+          });
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setResults({
+          properties: [],
+          tenants: [],
+          workers: [],
+          maintenance: [],
+          units: [],
+          leases: []
+        });
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [query]);
 
   const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
   };
 
-  const lowercasedQuery = query.toLowerCase();
+  const totalResults = useMemo(() => {
+    return results.properties.length +
+           results.tenants.length +
+           results.workers.length +
+           results.maintenance.length +
+           results.units.length +
+           results.leases.length;
+  }, [results]);
 
-  const filteredProperties = query
-    ? properties.filter(
-        (p) =>
-          p.title.toLowerCase().includes(lowercasedQuery) ||
-          p.address.toLowerCase().includes(lowercasedQuery) ||
-          p.type.toLowerCase().includes(lowercasedQuery)
-      )
-    : [];
-
-  const filteredTenants = query
-    ? tenants.filter((t) => {
-        const property = properties.find((p) => p.id === t.propertyId);
-        return (
-          t.name.toLowerCase().includes(lowercasedQuery) ||
-          (property &&
-            property.title.toLowerCase().includes(lowercasedQuery)) ||
-          t.email.toLowerCase().includes(lowercasedQuery)
-        );
-      })
-    : [];
-  
-  const filteredWorkers = query
-    ? workers.filter(
-        (w) =>
-          w.name.toLowerCase().includes(lowercasedQuery) ||
-          w.email.toLowerCase().includes(lowercasedQuery)
-      )
-    : [];
-
-  const filteredDocuments = query
-    ? documents.filter(
-        (d) =>
-          d.name.toLowerCase().includes(lowercasedQuery) ||
-          d.type.toLowerCase().includes(lowercasedQuery)
-      )
-    : [];
-
-  const filteredMaintenance = query
-    ? maintenanceRequests.filter((m) => {
-        const property = properties.find((p) => p.id === m.propertyId);
-        const tenant = tenants.find((t) => t.id === m.tenantId);
-        return (
-          (tenant && tenant.name.toLowerCase().includes(lowercasedQuery)) ||
-          (property &&
-            property.title.toLowerCase().includes(lowercasedQuery)) ||
-          (m.issue || '').toLowerCase().includes(lowercasedQuery) ||
-          (m.status || '').toLowerCase().includes(lowercasedQuery) ||
-          (m.priority || '').toLowerCase().includes(lowercasedQuery)
-        );
-      })
-    : [];
-
-  const totalResults =
-    filteredProperties.length +
-    filteredTenants.length +
-    filteredWorkers.length +
-    filteredDocuments.length +
-    filteredMaintenance.length;
   const hasResults = totalResults > 0;
   const hasQuery = query.length > 0;
 
@@ -119,7 +156,7 @@ export default function SearchDialog({ open, onOpenChange }: SearchDialogProps) 
         <div className="relative">
           <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search properties, tenants, workers..."
+            placeholder="Search properties, tenants, workers, maintenance..."
             value={query}
             onChange={handleQueryChange}
             className="pl-10"
@@ -131,36 +168,43 @@ export default function SearchDialog({ open, onOpenChange }: SearchDialogProps) 
               <SearchIcon className="h-16 w-16 text-muted-foreground" />
               <h2 className="text-xl font-bold">Search the application</h2>
               <p className="text-muted-foreground">
-                Find properties, tenants, workers, documents, and more.
+                Find properties, tenants, workers, maintenance requests, units, leases, and more.
               </p>
             </div>
           )}
 
-          {hasQuery && !hasResults && (
+          {loading && hasQuery && (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {hasQuery && !loading && !hasResults && (
             <div className="text-center py-16">
               <p className="text-muted-foreground">No results found.</p>
             </div>
           )}
 
-          {hasQuery && hasResults && (
+          {hasQuery && !loading && hasResults && (
             <div className="space-y-6">
-              {filteredProperties.length > 0 && (
+              {/* Properties */}
+              {results.properties.length > 0 && (
                 <div className="space-y-2">
                   <h3 className="flex items-center gap-2 font-semibold">
                     <Building2 className="h-5 w-5" />
-                    Properties ({filteredProperties.length})
+                    Properties ({results.properties.length})
                   </h3>
                   <div className="grid gap-2">
-                    {filteredProperties.map((property) => (
+                    {results.properties.map((property: any) => (
                       <Link
-                        href="/properties"
+                        href={`/${lang}/properties`}
                         key={property.id}
                         onClick={() => onOpenChange(false)}
                         className="block p-3 rounded-lg border hover:bg-muted"
                       >
-                        <div className="font-semibold">{property.title}</div>
+                        <div className="font-semibold">{property.title || property.name}</div>
                         <div className="text-sm text-muted-foreground">
-                          {property.address}
+                          {property.address}, {property.city} • {property.type}
                         </div>
                       </Link>
                     ))}
@@ -168,52 +212,49 @@ export default function SearchDialog({ open, onOpenChange }: SearchDialogProps) 
                 </div>
               )}
 
-              {filteredTenants.length > 0 && (
+              {/* Tenants */}
+              {results.tenants.length > 0 && (
                 <div className="space-y-2">
                   <h3 className="flex items-center gap-2 font-semibold">
                     <Users className="h-5 w-5" />
-                    Tenants ({filteredTenants.length})
+                    Tenants ({results.tenants.length})
                   </h3>
                   <div className="grid gap-2">
-                    {filteredTenants.map((tenant) => {
-                      const property = properties.find(
-                        (p) => p.id === tenant.propertyId
-                      );
-                      return (
-                        <Link
-                          href={`/tenants/${tenant.id}`}
-                          key={tenant.id}
-                          onClick={() => onOpenChange(false)}
-                          className="block p-3 rounded-lg border hover:bg-muted"
-                        >
-                          <div className="font-semibold">{tenant.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {property?.title}
-                          </div>
-                        </Link>
-                      );
-                    })}
+                    {results.tenants.map((tenant: any) => (
+                      <Link
+                        href={`/${lang}/tenants/${tenant.id}`}
+                        key={tenant.id}
+                        onClick={() => onOpenChange(false)}
+                        className="block p-3 rounded-lg border hover:bg-muted"
+                      >
+                        <div className="font-semibold">{tenant.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {tenant.email}
+                        </div>
+                      </Link>
+                    ))}
                   </div>
                 </div>
               )}
 
-               {filteredWorkers.length > 0 && (
+              {/* Workers */}
+              {results.workers.length > 0 && (
                 <div className="space-y-2">
                   <h3 className="flex items-center gap-2 font-semibold">
                     <UserCog className="h-5 w-5" />
-                    Workers ({filteredWorkers.length})
+                    Workers ({results.workers.length})
                   </h3>
                   <div className="grid gap-2">
-                    {filteredWorkers.map((worker) => (
+                    {results.workers.map((worker: any) => (
                       <Link
-                        href={`/workers/${worker.id}`}
+                        href={`/${lang}/workers/${worker.id}`}
                         key={worker.id}
                         onClick={() => onOpenChange(false)}
                         className="block p-3 rounded-lg border hover:bg-muted"
                       >
                         <div className="font-semibold">{worker.name}</div>
                         <div className="text-sm text-muted-foreground">
-                          {worker.email}
+                          {worker.email} • {worker.role}
                         </div>
                       </Link>
                     ))}
@@ -221,67 +262,90 @@ export default function SearchDialog({ open, onOpenChange }: SearchDialogProps) 
                 </div>
               )}
 
-              {filteredDocuments.length > 0 && (
-                <div className="space-y-2">
-                  <h3 className="flex items-center gap-2 font-semibold">
-                    <FileText className="h-5 w-5" />
-                    Documents ({filteredDocuments.length})
-                  </h3>
-                  <div className="grid gap-2">
-                    {filteredDocuments.map((doc) => (
-                      <Link
-                        href="/documents"
-                        key={doc.id}
-                        onClick={() => onOpenChange(false)}
-                        className="block p-3 rounded-lg border hover:bg-muted"
-                      >
-                        <div className="font-semibold">{doc.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {doc.type}
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {filteredMaintenance.length > 0 && (
+              {/* Maintenance Requests */}
+              {results.maintenance.length > 0 && (
                 <div className="space-y-2">
                   <h3 className="flex items-center gap-2 font-semibold">
                     <Wrench className="h-5 w-5" />
-                    Maintenance ({filteredMaintenance.length})
+                    Maintenance ({results.maintenance.length})
                   </h3>
                   <div className="grid gap-2">
-                    {filteredMaintenance.map((req) => {
-                      const property = properties.find(
-                        (p) => p.id === req.propertyId
-                      );
-                      const tenant = tenants.find((t) => t.id === req.tenantId);
-                      return (
-                        <Link
-                          href={`/maintenance/${req.id}`}
-                          key={req.id}
-                          onClick={() => onOpenChange(false)}
-                          className="block p-3 rounded-lg border hover:bg-muted"
-                        >
-                          <div className="flex justify-between">
-                            <div className="font-semibold">{req.issue}</div>
-                            <Badge
-                              variant={
-                                req.priority === 'High'
-                                  ? 'destructive'
-                                  : 'secondary'
-                              }
-                            >
-                              {req.priority}
-                            </Badge>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {property?.title} - {tenant?.name}
-                          </div>
-                        </Link>
-                      );
-                    })}
+                    {results.maintenance.map((req: any) => (
+                      <Link
+                        href={`/${lang}/properties`}
+                        key={req.id}
+                        onClick={() => onOpenChange(false)}
+                        className="block p-3 rounded-lg border hover:bg-muted"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="font-semibold">{req.issue}</div>
+                          <Badge
+                            variant={
+                              req.priority === 'High'
+                                ? 'destructive'
+                                : req.priority === 'Medium'
+                                ? 'default'
+                                : 'secondary'
+                            }
+                          >
+                            {req.priority}
+                          </Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {req.property?.title || req.property?.name} • {req.status}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Units */}
+              {results.units.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="flex items-center gap-2 font-semibold">
+                    <Home className="h-5 w-5" />
+                    Units ({results.units.length})
+                  </h3>
+                  <div className="grid gap-2">
+                    {results.units.map((unit: any) => (
+                      <Link
+                        href={`/${lang}/properties`}
+                        key={unit.id}
+                        onClick={() => onOpenChange(false)}
+                        className="block p-3 rounded-lg border hover:bg-muted"
+                      >
+                        <div className="font-semibold">Unit {unit.label}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {unit.property?.title || unit.property?.name} • {unit.bedrooms} bed(s) • ${unit.rent}/month
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Leases */}
+              {results.leases.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="flex items-center gap-2 font-semibold">
+                    <Calendar className="h-5 w-5" />
+                    Leases ({results.leases.length})
+                  </h3>
+                  <div className="grid gap-2">
+                    {results.leases.map((lease: any) => (
+                      <Link
+                        href={`/${lang}/properties`}
+                        key={lease.id}
+                        onClick={() => onOpenChange(false)}
+                        className="block p-3 rounded-lg border hover:bg-muted"
+                      >
+                        <div className="font-semibold">{lease.resident}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {lease.unit?.property?.title || lease.unit?.property?.name} - Unit {lease.unit?.label} • ${lease.monthlyRent}/month
+                        </div>
+                      </Link>
+                    ))}
                   </div>
                 </div>
               )}

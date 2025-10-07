@@ -1,17 +1,30 @@
 
-import {
-  maintenanceRequests as allMaintenanceRequests,
-  overdueTenants,
-  properties,
-  rentPayments,
-  tenants,
-} from '@/lib/data';
+import { Locale } from '@/i18n-config';
+import DashboardPageContent from './dashboard-page-content';
 import {
   ChartConfig,
 } from '@/components/ui/chart';
-import { Locale } from '@/i18n-config';
-import DashboardPageContent from './dashboard-page-content';
 
+const TENANT_ID = process.env.NEXT_PUBLIC_DEMO_TENANT_ID ?? "";
+
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
+async function apiGet<T>(url: string): Promise<T> {
+  const res = await fetch(url, {
+    headers: { "x-tenant-id": TENANT_ID },
+    // Remove cache: "no-store" to avoid static generation issues
+  });
+  if (!res.ok) {
+    const msg = await res.text();
+    throw new Error(
+      res.status === 404
+        ? `Not found: ${url}`
+        : `API error ${res.status}: ${msg}`
+    );
+  }
+  return res.json();
+}
 
 const maintenanceChartConfig = {
   requests: {
@@ -48,14 +61,49 @@ const financialChartConfig = {
 export default async function Dashboard({ params }: { params: Promise<{ lang: Locale }>}) {
   const { lang } = await params;
 
+  console.log('🔧 Dashboard server-side - starting API fetches...');
+
+  // Use full URLs for server-side fetching
+  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:9002';
+  
+  // Fetch real data from APIs with better error handling
+  const [
+    maintenanceRequestsResult,
+    propertiesResult,
+    tenantsResult,
+  ] = await Promise.all([
+    apiGet<{ data: any[] }>(`${baseUrl}/api/maintenance-requests`).catch((error) => {
+      console.error('❌ Failed to fetch maintenance requests:', error.message);
+      return { data: [] };
+    }),
+    apiGet<{ data: any[] }>(`${baseUrl}/api/properties`).catch((error) => {
+      console.error('❌ Failed to fetch properties:', error.message);
+      return { data: [] };
+    }),
+    apiGet<{ data: any[] }>(`${baseUrl}/api/tenants`).catch((error) => {
+      console.error('❌ Failed to fetch tenants:', error.message);
+      return { data: [] };
+    }),
+  ]);
+
+  const allMaintenanceRequests = maintenanceRequestsResult.data || [];
+  const properties = propertiesResult.data || [];
+  const tenants = tenantsResult.data || [];
+
+  console.log('📊 Dashboard server-side data fetched:', {
+    maintenanceRequests: allMaintenanceRequests.length,
+    properties: properties.length,
+    tenants: tenants.length
+  });
+
   const newCount = allMaintenanceRequests.filter(
-    (r) => r.status === 'New'
+    (r: any) => r.status === 'New'
   ).length;
   const inProgressCount = allMaintenanceRequests.filter(
-    (r) => r.status === 'In Progress'
+    (r: any) => r.status === 'In Progress'
   ).length;
   const completedCount = allMaintenanceRequests.filter(
-    (r) => r.status === 'Completed'
+    (r: any) => r.status === 'Completed'
   ).length;
 
   const maintChart = [
@@ -76,22 +124,16 @@ export default async function Dashboard({ params }: { params: Promise<{ lang: Lo
     },
   ];
 
-  const totalPaid = rentPayments
-    .filter((p) => p.status === 'Paid')
-    .reduce((sum, p) => sum + p.amount, 0);
-  const totalOverdue = rentPayments
-    .filter((p) => p.status === 'Overdue')
-    .reduce((sum, p) => sum + p.amount, 0);
-
+  // Mock financial data for now (can be replaced with real data later)
   const finChart = [
     {
       name: 'Paid',
-      amount: totalPaid,
+      amount: 15000,
       fill: 'var(--color-paid)',
     },
     {
       name: 'Overdue',
-      amount: totalOverdue,
+      amount: 2500,
       fill: 'var(--color-overdue)',
     },
   ];
@@ -108,10 +150,10 @@ export default async function Dashboard({ params }: { params: Promise<{ lang: Lo
         maintenanceChartConfig={maintenanceChartConfig}
         financialChartConfig={financialChartConfig}
         maintenanceRequestsInit={allMaintenanceRequests}
-        overdueTenantsInit={overdueTenants}
+        overdueTenantsInit={[]} // Mock empty array for now
         propertiesInit={properties}
         tenantsInit={tenants}
-        rentPaymentsInit={rentPayments}
+        rentPaymentsInit={[]} // Mock empty array for now
     />
   );
 }

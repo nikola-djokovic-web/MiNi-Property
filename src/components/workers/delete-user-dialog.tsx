@@ -23,7 +23,7 @@ export default function DeleteUserDialog({
   onDelete,
 }: {
   user: any;
-  userType: 'tenant' | 'worker';
+  userType: 'tenant' | 'worker' | 'admin';
   onDelete: () => void;
 }) {
   const [open, setOpen] = useState(false);

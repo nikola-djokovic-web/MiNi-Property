@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -21,49 +20,90 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar as CalendarIcon, PlusCircle } from "lucide-react";
-import { Property } from "@/lib/data";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
-import { format } from 'date-fns';
+import { apiSend } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
+
+const TENANT_ID = process.env.NEXT_PUBLIC_DEMO_TENANT_ID ?? "";
+
+console.log("TENANT_ID in add-tenant-dialog:", TENANT_ID); // Debug log
+
+import { PlusCircle } from "lucide-react";
 
 export default function AddTenantDialog({
   properties,
   onAddTenant,
 }: {
-  properties: Property[];
+  properties: any[];
   onAddTenant: (tenant: any) => void;
 }) {
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [propertyId, setPropertyId] = useState("");
-  const [leaseEndDate, setLeaseEndDate] = useState<Date>();
-  const [rent, setRent] = useState("");
-  const [status, setStatus] = useState("New");
+  const [emailError, setEmailError] = useState<string | null>(null);
 
-  const handleSubmit = () => {
-    const newTenant = {
-      name,
-      email,
-      phone,
-      propertyId,
-      leaseEndDate: leaseEndDate ? format(leaseEndDate, 'yyyy-MM-dd') : '',
-      rent: parseInt(rent),
-      status,
-    };
-    onAddTenant(newTenant);
-    setOpen(false);
-    // Reset form
-    setName("");
-    setEmail("");
-    setPhone("");
-    setPropertyId("");
-    setLeaseEndDate(undefined);
-    setRent("");
-    setStatus("New");
+  const handleSubmit = async () => {
+    setEmailError(null);
+    
+    // Validation
+    if (!name.trim()) {
+      setEmailError("Name is required");
+      return;
+    }
+    if (!email.trim()) {
+      setEmailError("Email is required");
+      return;
+    }
+    if (!propertyId) {
+      setEmailError("Property assignment is required");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      console.log("About to send API request with TENANT_ID:", TENANT_ID);
+      const { data: newTenant } = await apiSend<{ data: any }>(
+        "/api/tenants",
+        "POST",
+        {
+          name,
+          email,
+          propertyId,
+        },
+        TENANT_ID
+      );
+      console.log("Inviting tenant:", newTenant);
+      
+      // Find the assigned property for display
+      const assignedProperty = properties.find(p => p.id === propertyId);
+
+      await onAddTenant(newTenant);
+      
+      toast({
+        title: "Tenant Invited Successfully",
+        description: `Invitation sent to ${email} for ${assignedProperty?.title || 'the selected property'}.`,
+        variant: "default",
+        className: "bg-green-50 border-green-200 text-green-900",
+      });
+      
+      setOpen(false);
+      // Reset form
+      setName("");
+      setEmail("");
+      setPropertyId("");
+    } catch (err: any) {
+      const msg = err?.message || "Failed to invite tenant";
+      setEmailError(msg);
+      toast({
+        title: "Invitation Failed",
+        description: msg,
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -76,9 +116,9 @@ export default function AddTenantDialog({
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add New Tenant</DialogTitle>
+          <DialogTitle>Invite New Tenant</DialogTitle>
           <DialogDescription>
-            Enter the details of the new tenant. Click save when you're done.
+            Enter the tenant's details and assign them to a property. They will receive an invitation email to complete their registration.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -92,6 +132,7 @@ export default function AddTenantDialog({
               onChange={(e) => setName(e.target.value)}
               className="col-span-3"
               placeholder="e.g. John Doe"
+              required
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
@@ -102,99 +143,44 @@ export default function AddTenantDialog({
               id="email"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              aria-invalid={!!emailError}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (emailError) setEmailError(null);
+              }}
               className="col-span-3"
               placeholder="e.g. john@example.com"
-            />
-          </div>
-           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="phone" className="text-right">
-              Phone
-            </Label>
-            <Input
-              id="phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="col-span-3"
-              placeholder="(555) 555-5555"
+              required
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="property" className="text-right">
               Property
             </Label>
-            <Select value={propertyId} onValueChange={setPropertyId}>
+            <Select value={propertyId} onValueChange={setPropertyId} required>
               <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select a property" />
+                <SelectValue placeholder="Assign to property" />
               </SelectTrigger>
               <SelectContent>
                 {properties.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
-                    {p.title}
+                    {p.title || p.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="rent" className="text-right">
-              Rent
-            </Label>
-            <Input
-              id="rent"
-              type="number"
-              value={rent}
-              onChange={(e) => setRent(e.target.value)}
-              className="col-span-3"
-              placeholder="e.g. 2200"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="lease-end" className="text-right">
-              Lease End
-            </Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={"outline"}
-                  className={cn(
-                    "col-span-3 justify-start text-left font-normal",
-                    !leaseEndDate && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {leaseEndDate ? format(leaseEndDate, "PPP") : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={leaseEndDate}
-                  onSelect={setLeaseEndDate}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="status" className="text-right">
-              Status
-            </Label>
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select a status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="New">New</SelectItem>
-                <SelectItem value="Active">Active</SelectItem>
-                <SelectItem value="Moving Out">Moving Out</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {emailError && (
+            <div className="grid grid-cols-4 gap-4">
+              <div className="col-span-4 text-sm text-destructive text-center">
+                {emailError}
+              </div>
+            </div>
+          )}
         </div>
         <DialogFooter>
-          <Button type="submit" onClick={handleSubmit}>
-            Save Tenant
+          <Button type="submit" onClick={handleSubmit} disabled={submitting}>
+            {submitting ? "Sending Invite..." : "Send Invitation"}
           </Button>
         </DialogFooter>
       </DialogContent>

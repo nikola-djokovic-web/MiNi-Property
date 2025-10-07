@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -14,50 +13,27 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { PlusCircle } from "lucide-react";
-import { Property } from "@/lib/data";
-import { MultiSelect } from "../ui/multi-select";
 
 export default function AddWorkerDialog({
-  properties,
   onAddWorker,
 }: {
-  properties: Property[];
-  onAddWorker: (worker: any) => void;
+  onAddWorker: (worker: { name?: string; email: string }) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [status, setStatus] = useState("Active");
-  const [assignedPropertyIds, setAssignedPropertyIds] = useState<string[]>([]);
+
+  const emailValid = email.trim().length > 0 && /.+@.+\..+/.test(email);
 
   const handleSubmit = () => {
-    const newWorker = {
-      name,
-      email,
-      phone,
-      status,
-      assignedPropertyIds,
-    };
-    onAddWorker(newWorker);
+    if (!emailValid) return;
+    onAddWorker({ name: name.trim() || undefined, email: email.trim().toLowerCase() });
     setOpen(false);
     // Reset form
     setName("");
     setEmail("");
-    setPhone("");
-    setStatus("Active");
-    setAssignedPropertyIds([]);
   };
-
-  const propertyOptions = properties.map(p => ({ value: p.id, label: p.title }));
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -67,14 +43,14 @@ export default function AddWorkerDialog({
           Add Worker
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" title="Add worker">
         <DialogHeader>
           <DialogTitle>Add New Worker</DialogTitle>
           <DialogDescription>
-            Enter the details of the new worker.
+            Enter the worker's name (optional) and email. They'll finish registration and set their password.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
+        <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="name" className="text-right">
               Name
@@ -85,6 +61,7 @@ export default function AddWorkerDialog({
               onChange={(e) => setName(e.target.value)}
               className="col-span-3"
               placeholder="e.g. Bob the Builder"
+              autoComplete="name"
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
@@ -98,52 +75,17 @@ export default function AddWorkerDialog({
               onChange={(e) => setEmail(e.target.value)}
               className="col-span-3"
               placeholder="e.g. worker@example.com"
+              autoComplete="email"
+              required
             />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="phone" className="text-right">
-              Phone
-            </Label>
-            <Input
-              id="phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="col-span-3"
-              placeholder="(555) 123-4567"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="status" className="text-right">
-              Status
-            </Label>
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select a status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Active">Active</SelectItem>
-                <SelectItem value="Inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid grid-cols-4 items-start gap-4">
-             <Label htmlFor="properties" className="text-right pt-2">
-              Properties
-            </Label>
-            <div className="col-span-3">
-                 <MultiSelect 
-                    options={propertyOptions}
-                    selected={assignedPropertyIds}
-                    onChange={setAssignedPropertyIds}
-                    className="w-full"
-                    placeholder="Assign to properties..."
-                />
-            </div>
           </div>
         </div>
         <DialogFooter>
-          <Button type="submit" onClick={handleSubmit}>
-            Save Worker
+          <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button type="submit" onClick={handleSubmit} disabled={!emailValid}>
+            Invite Worker
           </Button>
         </DialogFooter>
       </DialogContent>

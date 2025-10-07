@@ -1,0 +1,17 @@
+{
+  "login": {
+    "title": "Sign In",
+    "description": "Welcome back! Please sign in to your account.",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign In"
+  },
+  "settings": {
+    "theme": {
+      "title": "Theme Settings",
+      "description": "Customize your application appearance and typography",
+      "colorScheme": "Color Scheme",
+      "typography": "Typography"
+    }
+  }
+}
