@@ -22,7 +22,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useTranslation } from "@/hooks/use-translation";
-import { CompanyLogo, MiniPropertyLogo } from "@/components/ui/mini-property-logo";
+import { CompanyLogo } from "@/components/ui/mini-property-logo";
 
 const allNavItems = [
   {
@@ -113,27 +113,19 @@ export default function MobileSidebar() {
       </SheetTrigger>
       <SheetContent side="left" className="sm:max-w-xs">
         <nav className="grid gap-6 text-lg font-medium">
-          {/* Company Logo at top (if exists) */}
-          {user?.companyLogo ? (
-            <div className="flex h-10 shrink-0 items-center justify-start gap-3 rounded-lg text-lg font-semibold text-foreground md:text-base">
+          {/* The dashboard link is always rendered; CompanyLogo falls back to initials without an upload. */}
+          <Link
+            href={`/${lang}/dashboard`}
+            aria-label={`${user.companyName || "MiNi Property"} dashboard`}
+            className="flex h-10 shrink-0 items-center justify-start gap-3 rounded-lg text-lg font-semibold text-foreground md:text-base"
+          >
             <CompanyLogo
-    logoUrl={user.companyLogo}
-    companyName={user.companyName || "Company"}
-    size="md"
-    href={`/${lang}/dashboard`}
-  />
-            <span className="text-foreground cursor-pointer">
-              {user.companyName || "Company"}
-            </span>
-          </div>
-          ) : (
-            <div className="flex h-10 shrink-0 items-center justify-start gap-3">
-              <MiniPropertyLogo size="md" />
-              <span className="text-lg font-semibold text-foreground">
-                MiNi Property
-              </span>
-            </div>
-          )}
+              logoUrl={user.companyLogo}
+              companyName={user.companyName || "MiNi Property"}
+              size="md"
+            />
+            <span className="text-foreground">{user.companyName || "MiNi Property"}</span>
+          </Link>
           {navItems.map((item) => (
             <Link
               key={item.href}

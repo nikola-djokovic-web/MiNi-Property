@@ -140,26 +140,23 @@ export default function AppSidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 z-10 hidden w-20 flex-col border-r bg-background sm:flex">
       {/* Company Logo Section - Top (Uploadable) */}
-      {user?.companyLogo && (
-        <div className="flex flex-col items-center gap-2 px-2 py-4 border-b">
+        <Link
+          href={`/${lang}/dashboard`}
+          aria-label={`${user.companyName || "Company"} dashboard`}
+          className="flex flex-col items-center gap-2 border-b px-2 py-4"
+        >
           <CompanyLogo 
             logoUrl={user.companyLogo}
-            companyName={user.companyName || "Company"}
+            companyName={user.companyName || "MiNi Property"}
             size="lg"
-            fallback={false}
-            href={`/${lang}/dashboard`}
           />
-          {user.companyName && (
-            <span className="text-xs text-center text-muted-foreground font-medium leading-tight">
-              {user.companyName.length > 12 
-                ? `${user.companyName.slice(0, 12)}...` 
-                : user.companyName
-              }
-            </span>
-          )}
-        </div>
-      )}
-      
+          <span className="text-xs text-center text-muted-foreground font-medium leading-tight">
+            {(user.companyName || "MiNi Property").length > 12
+              ? `${(user.companyName || "MiNi Property").slice(0, 12)}...`
+              : user.companyName || "MiNi Property"}
+          </span>
+        </Link>
+
       <nav className="flex flex-col items-center gap-4 px-2 sm:py-4">
         <TooltipProvider>
           {navItems.map((item) => (
@@ -216,7 +213,7 @@ export default function AppSidebar() {
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-muted bg-muted/20 md:h-10 md:w-10">
-                <MiniPropertyLogo size="sm" />
+                <MiniPropertyLogo size="sm" href={`/${lang}/dashboard`} />
                 <span className="sr-only">MiNi Property</span>
               </div>
             </TooltipTrigger>
