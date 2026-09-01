@@ -1,7 +1,7 @@
 
 const dictionary = {
     login: {
-        title: "TenantLink",
+        title: "MiNi Property",
         description: "The modern, minimal property management solution.",
         cardTitle: "Login",
         cardDescription: "Enter your email below to login to your account.",

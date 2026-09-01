@@ -49,7 +49,7 @@ const lato = Lato({
 });
 
 export const metadata: Metadata = {
-  title: "TenantLink",
+  title: "MiNi Property",
   description: "A modern property management platform.",
 };
 

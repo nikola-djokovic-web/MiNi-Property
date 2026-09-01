@@ -1,4 +1,4 @@
-# **App Name**: TenantLink
+# **App Name**: MiNi Property
 
 ## Core Features:
 

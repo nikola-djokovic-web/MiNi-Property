@@ -1,7 +1,7 @@
 
 const dictionary = {
     login: {
-        title: "TenantLink",
+        title: "MiNi Property",
         description: "Die moderne, minimale Hausverwaltungslösung.",
         cardTitle: "Anmelden",
         cardDescription: "Geben Sie unten Ihre E-Mail-Adresse ein, um sich bei Ihrem Konto anzumelden.",
