@@ -9,9 +9,10 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { enforceAiRateLimit } from '@/lib/ai-rate-limit';
 
 const TenantChatbotInputSchema = z.object({
-  question: z.string().describe('The tenant\'s question.'),
+  question: z.string().trim().min(1).max(1_000).describe('The tenant\'s question.'),
 });
 export type TenantChatbotInput = z.infer<typeof TenantChatbotInputSchema>;
 
@@ -25,6 +26,7 @@ export type TenantChatbotOutput = z.infer<typeof TenantChatbotOutputSchema>;
 export async function tenantChatbot(
   input: TenantChatbotInput
 ): Promise<TenantChatbotOutput> {
+  await enforceAiRateLimit();
   return tenantChatbotFlow(input);
 }
 

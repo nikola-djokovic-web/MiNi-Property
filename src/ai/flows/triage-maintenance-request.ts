@@ -9,11 +9,12 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { enforceAiRateLimit } from '@/lib/ai-rate-limit';
 
 const TriageMaintenanceRequestInputSchema = z.object({
-  title: z.string().describe('The title of the maintenance issue.'),
+  title: z.string().trim().min(1).max(300).describe('The title of the maintenance issue.'),
   details: z
-    .string()
+    .string().trim().min(1).max(4_000)
     .describe('A detailed description of the maintenance issue.'),
 });
 export type TriageMaintenanceRequestInput = z.infer<
@@ -43,7 +44,7 @@ export async function triageMaintenanceRequest(
       console.warn('No Gemini API key found, using fallback triage logic');
       return fallbackTriage(input);
     }
-    
+    await enforceAiRateLimit();
     return await triageMaintenanceRequestFlow(input);
   } catch (error) {
     console.warn('AI triage failed, using fallback logic:', error);

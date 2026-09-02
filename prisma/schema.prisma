@@ -49,6 +49,15 @@ model User {
   updatedAt DateTime @updatedAt
 }
 
+model AiRateLimit {
+  key         String
+  windowStart DateTime
+  count       Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  @@id([key, windowStart])
+}
+
 model Property {
   id                 String               @id @default(cuid())
   tenantId           String

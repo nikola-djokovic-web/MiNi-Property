@@ -9,15 +9,16 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { enforceAiRateLimit } from '@/lib/ai-rate-limit';
 
 const GenerateOptimizedListingInputSchema = z.object({
   propertyDescription: z
-    .string()
+    .string().trim().min(1).max(4_000)
     .describe('A detailed description of the property.'),
-  propertyType: z.string().describe('The type of property (e.g., apartment, house, condo).'),
-  location: z.string().describe('The location of the property.'),
-  amenities: z.string().describe('A list of amenities offered by the property.'),
-  targetTenant: z.string().describe('The ideal tenant for this property.'),
+  propertyType: z.string().trim().min(1).max(100).describe('The type of property (e.g., apartment, house, condo).'),
+  location: z.string().trim().min(1).max(200).describe('The location of the property.'),
+  amenities: z.string().trim().min(1).max(1_000).describe('A list of amenities offered by the property.'),
+  targetTenant: z.string().trim().min(1).max(300).describe('The ideal tenant for this property.'),
 });
 export type GenerateOptimizedListingInput = z.infer<
   typeof GenerateOptimizedListingInputSchema
@@ -36,6 +37,7 @@ export type GenerateOptimizedListingOutput = z.infer<
 export async function generateOptimizedListing(
   input: GenerateOptimizedListingInput
 ): Promise<GenerateOptimizedListingOutput> {
+  await enforceAiRateLimit();
   return generateOptimizedListingFlow(input);
 }
 
