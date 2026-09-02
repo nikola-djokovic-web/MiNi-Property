@@ -1,7 +1,9 @@
-
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,20 +15,30 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Pencil } from "lucide-react";
 import { Property, workers as allWorkers } from "@/lib/data";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
-import { MultiSelect } from "../ui/multi-select";
+import { apiSend } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
+
+const TENANT_ID = process.env.NEXT_PUBLIC_DEMO_TENANT_ID ?? "";
 
 type Worker = (typeof allWorkers)[0];
+
+const editWorkerSchema = z.object({
+  name: z.string().trim().min(1, "Name is required"),
+  email: z.string().trim().min(1, "Email is required").email("Enter a valid email address"),
+});
+
+type EditWorkerForm = z.infer<typeof editWorkerSchema>;
 
 export default function EditWorkerDialog({
   worker,
@@ -37,37 +49,37 @@ export default function EditWorkerDialog({
   properties: Property[];
   onUpdateWorker: (worker: any) => void;
 }) {
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState(worker.name);
-  const [email, setEmail] = useState(worker.email);
-  const [phone, setPhone] = useState(worker.phone);
-  const [status, setStatus] = useState(worker.status);
-  const [assignedPropertyIds, setAssignedPropertyIds] = useState(worker.assignedPropertyIds || []);
+  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      setName(worker.name);
-      setEmail(worker.email);
-      setPhone(worker.phone);
-      setStatus(worker.status);
-      setAssignedPropertyIds(worker.assignedPropertyIds || []);
+  const form = useForm<EditWorkerForm>({
+    resolver: zodResolver(editWorkerSchema),
+    values: { name: worker.name ?? "", email: worker.email ?? "" },
+  });
+
+  const handleSubmit = async (values: EditWorkerForm) => {
+    setSubmitting(true);
+    try {
+      const { data: updated } = await apiSend<{ data: any }>(
+        `/api/workers/${worker.id}`,
+        "PUT",
+        values,
+        TENANT_ID
+      );
+      onUpdateWorker(updated);
+      toast({ title: "Worker updated" });
+      setOpen(false);
+    } catch (err: any) {
+      toast({
+        title: "Failed to update worker",
+        description: err?.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
     }
-  }, [open, worker]);
-
-  const handleSubmit = () => {
-    const updatedWorker = {
-      ...worker,
-      name,
-      email,
-      phone,
-      status,
-      assignedPropertyIds,
-    };
-    onUpdateWorker(updatedWorker);
-    setOpen(false);
   };
-  
-  const propertyOptions = properties.map(p => ({ value: p.id, label: p.title}));
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -88,77 +100,48 @@ export default function EditWorkerDialog({
         <DialogHeader>
           <DialogTitle>Edit Worker</DialogTitle>
           <DialogDescription>
-            Update the details for {worker.name}.
+            Update the details for {worker.name}. Property assignments are managed from each property's page.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right">
-              Name
-            </Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="col-span-3"
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-4 py-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem className="grid grid-cols-4 items-center gap-4 space-y-0">
+                  <FormLabel className="text-right">Name</FormLabel>
+                  <div className="col-span-3">
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </div>
+                </FormItem>
+              )}
             />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="email" className="text-right">
-              Email
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="col-span-3"
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem className="grid grid-cols-4 items-center gap-4 space-y-0">
+                  <FormLabel className="text-right">Email</FormLabel>
+                  <div className="col-span-3">
+                    <FormControl>
+                      <Input type="email" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </div>
+                </FormItem>
+              )}
             />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="phone" className="text-right">
-              Phone
-            </Label>
-            <Input
-              id="phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="col-span-3"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="status" className="text-right">
-              Status
-            </Label>
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select a status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Active">Active</SelectItem>
-                <SelectItem value="Inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid grid-cols-4 items-start gap-4">
-             <Label htmlFor="properties" className="text-right pt-2">
-              Properties
-            </Label>
-            <div className="col-span-3">
-                 <MultiSelect 
-                    options={propertyOptions}
-                    selected={assignedPropertyIds}
-                    onChange={setAssignedPropertyIds}
-                    className="w-full"
-                />
-            </div>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button type="submit" onClick={handleSubmit}>
-            Save Changes
-          </Button>
-        </DialogFooter>
+            <DialogFooter>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,12 +15,26 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { apiSend } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle } from "lucide-react";
 
 const TENANT_ID = process.env.NEXT_PUBLIC_DEMO_TENANT_ID ?? "";
+
+const addAdminSchema = z.object({
+  name: z.string().trim().min(1, "Name is required"),
+  email: z.string().trim().min(1, "Email is required").email("Enter a valid email address"),
+});
+
+type AddAdminForm = z.infer<typeof addAdminSchema>;
 
 export default function AddAdminDialog({
   onAddAdmin,
@@ -27,54 +44,36 @@ export default function AddAdminDialog({
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [emailError, setEmailError] = useState<string | null>(null);
 
-  const handleSubmit = async () => {
-    setEmailError(null);
-    
-    // Validation
-    if (!name.trim()) {
-      setEmailError("Name is required");
-      return;
-    }
-    if (!email.trim()) {
-      setEmailError("Email is required");
-      return;
-    }
+  const form = useForm<AddAdminForm>({
+    resolver: zodResolver(addAdminSchema),
+    defaultValues: { name: "", email: "" },
+  });
 
+  const handleSubmit = async (values: AddAdminForm) => {
     setSubmitting(true);
     try {
-      console.log("About to send admin invitation with TENANT_ID:", TENANT_ID);
       const { data: newAdmin } = await apiSend<{ data: any }>(
         "/api/admins",
         "POST",
-        {
-          name,
-          email,
-        },
+        values,
         TENANT_ID
       );
 
-      console.log("Inviting admin:", newAdmin);
-      
       await onAddAdmin(newAdmin);
-      
+
       toast({
         title: "Administrator Invited Successfully",
-        description: `Invitation sent to ${email}.`,
+        description: `Invitation sent to ${values.email}.`,
         variant: "default",
         className: "bg-green-50 border-green-200 text-green-900",
       });
-      
+
       setOpen(false);
-      // Reset form
-      setName("");
-      setEmail("");
+      form.reset();
     } catch (err: any) {
       const msg = err?.message || "Failed to invite administrator";
-      setEmailError(msg);
+      form.setError("root", { message: msg });
       toast({
         title: "Invitation Failed",
         description: msg,
@@ -86,7 +85,13 @@ export default function AddAdminDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) form.reset();
+      }}
+    >
       <DialogTrigger asChild>
         <Button>
           <PlusCircle className="mr-2 h-4 w-4" />
@@ -100,45 +105,48 @@ export default function AddAdminDialog({
             Enter the administrator's details. They will receive an invitation email to complete their registration.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right">
-              Name
-            </Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="col-span-3"
-              placeholder="Full name"
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-4 py-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem className="grid grid-cols-4 items-center gap-4 space-y-0">
+                  <FormLabel className="text-right">Name</FormLabel>
+                  <div className="col-span-3">
+                    <FormControl>
+                      <Input placeholder="Full name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </div>
+                </FormItem>
+              )}
             />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="email" className="text-right">
-              Email
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="col-span-3"
-              placeholder="admin@example.com"
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem className="grid grid-cols-4 items-center gap-4 space-y-0">
+                  <FormLabel className="text-right">Email</FormLabel>
+                  <div className="col-span-3">
+                    <FormControl>
+                      <Input type="email" placeholder="admin@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </div>
+                </FormItem>
+              )}
             />
-          </div>
-          {emailError && (
-            <p className="text-sm text-destructive">{emailError}</p>
-          )}
-        </div>
-        <DialogFooter>
-          <Button
-            type="submit"
-            onClick={handleSubmit}
-            disabled={submitting}
-          >
-            {submitting ? "Sending..." : "Send Invitation"}
-          </Button>
-        </DialogFooter>
+            {form.formState.errors.root && (
+              <p className="text-sm text-destructive text-center">{form.formState.errors.root.message}</p>
+            )}
+            <DialogFooter>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? "Sending..." : "Send Invitation"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

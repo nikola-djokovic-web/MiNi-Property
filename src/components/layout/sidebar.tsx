@@ -6,20 +6,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Building,
-  LayoutDashboard,
-  Building2,
-  Users,
-  Wrench,
-  DollarSign,
-  FileText,
-  Sparkles,
-  Settings,
-  UserCog,
-  List,
-  Bot,
-} from "lucide-react";
+import { Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "@/hooks/use-sidebar";
@@ -27,63 +14,7 @@ import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useTranslation } from "@/hooks/use-translation";
 import { CompanyLogo, MiniPropertyLogo } from "@/components/ui/mini-property-logo";
-
-const allNavItems = [
-  {
-    href: "/dashboard",
-    label: "Dashboard",
-    icon: LayoutDashboard,
-    roles: ["admin", "worker", "tenant"],
-  },
-  {
-    href: "/properties",
-    label: "Properties",
-    icon: Building2,
-    roles: ["admin", "worker"],
-  },
-  {
-    href: "/property-management",
-    label: "Property Management",
-    icon: List,
-    roles: ["admin"],
-  },
-  { href: "/tenants", label: "Tenants", icon: Users, roles: ["admin"] },
-  { href: "/workers", label: "Workers", icon: UserCog, roles: ["admin"] },
-  {
-    href: "/maintenance",
-    label: "Maintenance",
-    icon: Wrench,
-    roles: ["tenant"],
-  },
-  {
-    href: "/rent",
-    label: "Rent Collection",
-    icon: DollarSign,
-    roles: ["admin"],
-  },
-  {
-    href: "/documents",
-    label: "Documents",
-    icon: FileText,
-    roles: ["admin", "worker"],
-  },
-  {
-    href: "/ai-generator",
-    label: "AI Generator",
-    icon: Sparkles,
-    roles: ["admin"],
-  },
-  { href: "/ai-chatbot", label: "AI Assistant", icon: Bot, roles: ["tenant"] },
-];
-
-const isActive = (pathname: string, href: string) => {
-  const lang = pathname.split("/")[1] || "en";
-  const basePath = `/${lang}${href}`;
-  if (basePath === `/${lang}/dashboard`) {
-    return pathname === basePath;
-  }
-  return pathname.startsWith(basePath);
-};
+import { navItems as allNavItems, isNavActive as isActive } from "@/config/nav";
 
 const MiniLogo = () => (
   <svg
@@ -173,7 +104,7 @@ export default function AppSidebar() {
                   <item.icon className="h-5 w-5" />
                   <span className="sr-only">
                     {t(
-                      item.label as keyof typeof tNav,
+                      item.labelKey as keyof typeof tNav,
                       item.label
                     )}
                   </span>
@@ -181,7 +112,7 @@ export default function AppSidebar() {
               </TooltipTrigger>
               <TooltipContent side="right">
                 {t(
-                  item.label as keyof typeof tNav,
+                  item.labelKey as keyof typeof tNav,
                   item.label
                 )}
               </TooltipContent>

@@ -22,7 +22,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { PlusCircle, Loader2 } from "lucide-react";
 import { User, useCurrentUser } from "@/hooks/use-current-user";
 import { Input } from "../ui/input";
@@ -74,7 +73,6 @@ export default function AddRequestDialog({
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>(propertyId || "");
   const [tenantId, setTenantId] = useState<string | undefined>(undefined);
   const [assignedWorkerId, setAssignedWorkerId] = useState<string | null>(null);
-  const [assignToSelf, setAssignToSelf] = useState(true);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -83,19 +81,10 @@ export default function AddRequestDialog({
   const [tenants, setTenants] = useState<{ id: string; name: string; email?: string }[]>([]);
   const [workers, setWorkers] = useState<Worker[]>([]);
   
-  // Use the current user hook
+  // Use the current user hook - this already holds the real, session-verified
+  // user (id, role, propertyId for tenants), so there's no need to re-fetch it.
   const { user: currentUser } = useCurrentUser();
   const userRole = currentUser?.role || '';
-
-  // Debug log for role detection
-  useEffect(() => {
-    console.log('🔍 Dialog user role detection:', {
-      currentUser,
-      userRole,
-      userEmail: currentUser?.email,
-      userName: currentUser?.name
-    });
-  }, [currentUser, userRole]);
 
   // Load data when dialog opens
   useEffect(() => {
@@ -112,46 +101,13 @@ export default function AddRequestDialog({
         apiGet<{ data: any[] }>("/api/tenants").catch(() => ({ data: [] })),
         apiGet<{ data: Worker[] }>("/api/workers").catch(() => ({ data: [] })),
       ]);
-      
-      // Try to get current user to determine if they're a tenant
-      let effectiveUser = null;
-      try {
-        const userResponse = await fetch('/api/auth/me', {
-          headers: { 
-            'x-tenant-id': TENANT_ID,
-            'x-user-email': 'tenant@example.com', // This should come from actual auth
-          },
-          cache: 'no-store'
-        });
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
-          effectiveUser = userData.user;
-        }
-      } catch (error) {
-        console.log('Could not get current user, proceeding with all properties');
-      }
-      
-      // Filter properties for tenant users
+
+      // Tenants only see their own assigned property.
       let availableProperties = propsRes.data;
-      if (effectiveUser && effectiveUser.role === 'tenant' && effectiveUser.propertyId) {
-        // Tenant should only see their assigned property
-        availableProperties = propsRes.data.filter(p => p.id === effectiveUser.propertyId);
-      } else if (effectiveUser && effectiveUser.role === 'tenant' && effectiveUser.email === 'tenant@example.com') {
-        // Hardcoded assignment for seeded tenant
-        const seededProperty = propsRes.data.find(p => p.id === 'seed-prop-1');
-        if (seededProperty) {
-          availableProperties = [seededProperty];
-        } else {
-          // Fallback property for seeded tenant
-          availableProperties = [{
-            id: 'seed-prop-1',
-            name: 'Hauptstraße 1',
-            title: 'Hauptstraße 1',
-            address: 'Hauptstraße 1'
-          }];
-        }
+      if (currentUser?.role === 'tenant' && currentUser.propertyId) {
+        availableProperties = propsRes.data.filter(p => p.id === currentUser.propertyId);
       }
-      
+
       setProperties(availableProperties);
       setTenants(tenantsRes.data.map(t => ({ id: t.id, name: t.name || t.email, email: t.email })));
       setWorkers(workersRes.data);
@@ -163,28 +119,10 @@ export default function AddRequestDialog({
         setSelectedPropertyId(availableProperties[0].id);
       }
 
-            // Set default tenant - for tenant users, set to their own tenant record
-      if (effectiveUser && effectiveUser.role === 'tenant') {
-        // Find the tenant record that matches the current user
-        const myTenantRecord = tenantsRes.data.find(t => t.email === effectiveUser.email);
-        console.log('🔍 Looking for tenant record for user:', {
-          userEmail: effectiveUser.email,
-          foundRecord: myTenantRecord,
-          allTenants: tenantsRes.data.map(t => ({ id: t.id, email: t.email, name: t.name }))
-        });
-        
-        if (myTenantRecord) {
-          console.log('✅ Setting tenant to:', myTenantRecord.id);
-          setTenantId(myTenantRecord.id);
-        } else {
-          // Fallback: use the known tenant ID for our seeded user
-          if (effectiveUser.email === 'tenant@example.com') {
-            console.log('🔄 Using fallback tenant ID for seeded user');
-            setTenantId('cmgasyaot000m0afqqouwi6td');
-          } else if (tenantsRes.data.length > 0) {
-            setTenantId(tenantsRes.data[0].id);
-          }
-        }
+      // A tenant is submitting on their own behalf - their own User record
+      // is the "tenant" for the request.
+      if (currentUser?.role === 'tenant') {
+        setTenantId(currentUser.id);
       } else if (tenantsRes.data.length > 0) {
         setTenantId(tenantsRes.data[0].id);
       }
@@ -201,18 +139,17 @@ export default function AddRequestDialog({
       setIssue("");
       setDetails("");
       setAssignedWorkerId(null);
-      setAssignToSelf(true);
     }
   }, [open]);
 
   const handleSubmit = async () => {
     if (!tenantId || !issue || !selectedPropertyId) return;
 
-    let finalAssignedWorkerId = null;
-
-    // Note: We'll need to get current user info for role-based logic
-    // For now, allowing assignment selection for all users
-    if (assignedWorkerId && assignedWorkerId !== "unassigned") {
+    let finalAssignedWorkerId: string | null = null;
+    if (userRole === 'worker' && currentUser) {
+      // Matches the "automatically assigned to you" notice shown below.
+      finalAssignedWorkerId = currentUser.id;
+    } else if (assignedWorkerId && assignedWorkerId !== "unassigned") {
       finalAssignedWorkerId = assignedWorkerId;
     }
 

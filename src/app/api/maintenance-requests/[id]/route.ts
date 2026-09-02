@@ -1,21 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/server/db';
+import { getSessionUser } from '@/lib/auth';
 import { broadcastNotification } from '../../notifications/stream/route';
+
+const updateMaintenanceRequestSchema = z.object({
+  issue: z.string().min(1).max(500).optional(),
+  details: z.string().max(5000).optional(),
+  priority: z.enum(['Low', 'Medium', 'High']).optional(),
+  status: z.enum(['New', 'In Progress', 'Completed']).optional(),
+  assignedWorkerId: z.string().min(1).nullable().optional(),
+});
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: requestId } = await params;
-    const tenantId = request.headers.get('x-tenant-id');
-
-    if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
+    const { id: requestId } = await params;
+    const tenantId = user.tenantId;
 
     const maintenanceRequest = await prisma.maintenanceRequest.findFirst({
       where: {
@@ -43,6 +50,10 @@ export async function GET(
         { error: 'Maintenance request not found' },
         { status: 404 }
       );
+    }
+
+    if (user.role === 'worker' && maintenanceRequest.assignedWorkerId !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // If there's an assigned worker, fetch their details separately
@@ -79,24 +90,24 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: requestId } = await params;
-    const tenantId = request.headers.get('x-tenant-id');
-
-    if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
+    const { id: requestId } = await params;
+    const tenantId = user.tenantId;
 
-    const body = await request.json();
+    const parsed = updateMaintenanceRequestSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 });
+    }
     const {
       issue,
       details,
       priority,
       status,
       assignedWorkerId,
-    } = body;
+    } = parsed.data;
 
     // Verify the request exists and belongs to the tenant
     const existingRequest = await prisma.maintenanceRequest.findFirst({
@@ -111,6 +122,26 @@ export async function PATCH(
         { error: 'Maintenance request not found' },
         { status: 404 }
       );
+    }
+
+    if (user.role === 'worker') {
+      if (existingRequest.assignedWorkerId !== user.id) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+      // Workers can update status/details on their own requests, but not reassign them.
+      if (assignedWorkerId !== undefined && assignedWorkerId !== existingRequest.assignedWorkerId) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+    }
+
+    if (assignedWorkerId) {
+      const worker = await prisma.user.findFirst({
+        where: { id: assignedWorkerId, tenantId, role: 'worker' },
+        select: { id: true },
+      });
+      if (!worker) {
+        return NextResponse.json({ error: 'Worker not found' }, { status: 400 });
+      }
     }
 
     // Check if worker is being assigned for notifications
@@ -240,15 +271,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: requestId } = await params;
-    const tenantId = request.headers.get('x-tenant-id');
-
-    if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
+    if (user.role !== 'admin' && user.role !== 'owner') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    const { id: requestId } = await params;
+    const tenantId = user.tenantId;
 
     // Verify the request exists and belongs to the tenant
     const existingRequest = await prisma.maintenanceRequest.findFirst({

@@ -1,10 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma, UserRole } from "@prisma/client";
 import { prisma } from "@/server/db";
-import { requireTenantId } from "@/lib/tenant";
+import { getSessionUser } from "@/lib/auth";
+
+const USER_ROLES = Object.values(UserRole) as string[];
+
+const USER_SEARCH_SELECT = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+  tenantId: true,
+  propertyId: true,
+  createdAt: true,
+} satisfies Prisma.UserSelect;
 
 export async function GET(req: NextRequest) {
   try {
-    const tenantId = requireTenantId(req);
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    const tenantId = user.tenantId;
     const { searchParams } = new URL(req.url);
     const query = searchParams.get("q")?.toLowerCase() || "";
     
@@ -50,6 +65,7 @@ export async function GET(req: NextRequest) {
             { email: { contains: query, mode: 'insensitive' } }
           ]
         },
+        select: USER_SEARCH_SELECT,
         take: 10,
         orderBy: { createdAt: 'desc' }
       }),
@@ -62,9 +78,12 @@ export async function GET(req: NextRequest) {
           OR: [
             { name: { contains: query, mode: 'insensitive' } },
             { email: { contains: query, mode: 'insensitive' } },
-            { role: { contains: query, mode: 'insensitive' } }
-          ]
+            // role is an enum, not free text - only match it if the query
+            // is itself a valid role name (e.g. searching "admin").
+            ...(USER_ROLES.includes(query) ? [{ role: query as UserRole }] : []),
+          ] as Prisma.UserWhereInput[],
         },
+        select: USER_SEARCH_SELECT,
         take: 10,
         orderBy: { createdAt: 'desc' }
       }),

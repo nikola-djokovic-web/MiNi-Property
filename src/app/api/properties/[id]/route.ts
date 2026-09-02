@@ -1,15 +1,47 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/server/db";
-import { requireTenantId } from "@/lib/tenant";
+import { getSessionUser } from "@/lib/auth";
 import { broadcastNotification } from "../../notifications/stream/route";
+
+const updatePropertySchema = z.object({
+  title: z.string().trim().max(200).optional(),
+  name: z.string().trim().max(200).optional(),
+  address: z.string().trim().max(300).optional(),
+  city: z.string().trim().max(120).optional(),
+  imageUrl: z.string().trim().max(2000).optional(),
+  imageHint: z.string().trim().max(200).nullable().optional(),
+  type: z.enum(["Apartment", "House", "Condo", "Townhouse", "Commercial"]).optional(),
+  assignedWorkerId: z.string().min(1).nullable().optional(),
+});
 
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const tenantId = requireTenantId(req);
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    if (user.role !== "admin" && user.role !== "owner") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    const tenantId = user.tenantId;
     const params = await context.params;
     const propertyId = params.id;
-    const body = await req.json();
-    
+
+    const parsed = updatePropertySchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
+    }
+    const body = parsed.data;
+
+    if (body.assignedWorkerId) {
+      const worker = await prisma.user.findFirst({
+        where: { id: body.assignedWorkerId, tenantId, role: "worker" },
+        select: { id: true },
+      });
+      if (!worker) {
+        return NextResponse.json({ error: "Worker not found" }, { status: 400 });
+      }
+    }
+
     // Get current property to compare changes
     const currentProperty = await prisma.property.findFirst({
       where: { id: propertyId, tenantId },
@@ -242,7 +274,12 @@ async function handleWorkerPropertyAssignmentNotification(
 
 export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const tenantId = requireTenantId(req);
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    if (user.role !== "admin" && user.role !== "owner") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    const tenantId = user.tenantId;
     const params = await context.params;
     const propertyId = params.id;
     
@@ -343,18 +380,24 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
 
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const tenantId = requireTenantId(req);
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    const tenantId = user.tenantId;
     const params = await context.params;
     const propertyId = params.id;
-    
+
     const property = await prisma.property.findFirst({
       where: { id: propertyId, tenantId },
     });
-    
+
     if (!property) {
       return NextResponse.json({ error: "Property not found" }, { status: 404 });
     }
-    
+
+    if (user.role === "worker" && property.assignedWorkerId !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     return NextResponse.json({ data: property });
   } catch (e: any) {
     console.error("GET /api/properties/[id] error:", e);

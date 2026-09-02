@@ -68,6 +68,7 @@ export function publicUser(user: {
   role: string;
   tenantId: string;
   profileImage: string | null;
+  propertyId?: string | null;
 }) {
   return {
     id: user.id,
@@ -76,5 +77,6 @@ export function publicUser(user: {
     role: user.role,
     tenantId: user.tenantId,
     profileImage: user.profileImage,
+    propertyId: user.propertyId ?? null,
   };
 }

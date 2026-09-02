@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-// Note: Using mock data for now - replace with actual Prisma calls once schema is properly synced
+import { prisma } from '@/server/db';
+import { getSessionUser } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = request.headers.get('user-id');
-    
-    if (!userId) {
+    const user = await getSessionUser();
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Mock response for now
-    return NextResponse.json({ companyName: null, companyLogo: null });
+    return NextResponse.json({
+      companyName: user.companyName ?? null,
+      companyLogo: user.companyLogo ?? null,
+    });
   } catch (error) {
     console.error('Error fetching company settings:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -19,18 +21,26 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const userId = request.headers.get('user-id');
-    
-    if (!userId) {
+    const user = await getSessionUser();
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (user.role !== 'admin' && user.role !== 'owner') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { companyName, companyLogo } = await request.json();
 
-    // Mock response for now - in real implementation, save to database
-    console.log('Saving company settings:', { userId, companyName, companyLogo });
-    
-    return NextResponse.json({ companyName, companyLogo });
+    const updated = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        companyName: typeof companyName === 'string' ? companyName : undefined,
+        companyLogo: typeof companyLogo === 'string' ? companyLogo : undefined,
+      },
+      select: { companyName: true, companyLogo: true },
+    });
+
+    return NextResponse.json(updated);
   } catch (error) {
     console.error('Error updating company settings:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -39,16 +49,20 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const userId = request.headers.get('user-id');
-    
-    if (!userId) {
+    const user = await getSessionUser();
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    if (user.role !== 'admin' && user.role !== 'owner') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
-    // Mock response for now - in real implementation, delete from database
-    console.log('Deleting company logo for user:', userId);
-    
-    return NextResponse.json({ companyName: null, companyLogo: null });
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { companyLogo: null },
+    });
+
+    return NextResponse.json({ companyName: user.companyName ?? null, companyLogo: null });
   } catch (error) {
     console.error('Error deleting company logo:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

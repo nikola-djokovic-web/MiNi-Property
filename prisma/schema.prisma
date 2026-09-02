@@ -24,8 +24,16 @@ model Tenant {
   maintenanceRequests MaintenanceRequest[]
   notifications       Notification[]
   webhooks            NotificationWebhook[]
+  documents           Document[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
+}
+
+enum UserRole {
+  admin
+  owner
+  worker
+  tenant
 }
 
 model User {
@@ -36,7 +44,7 @@ model User {
   profileImage String? // URL to profile image
   companyName String? // Company name for branding
   companyLogo String? // URL to company logo
-  role      String // owner, admin, manager, maintenance, accountant
+  role      UserRole
   tenantId  String
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   sessions  Session[]
@@ -47,8 +55,13 @@ model User {
   property   Property? @relation("UserProperty", fields: [propertyId], references: [id], onDelete: SetNull)
   
   notifications Notification[]
+  workLogs  WorkLog[]
+  documents Document[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, role])
 }
 
 model Session {
@@ -108,6 +121,9 @@ model Property {
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
   MaintenanceRequest MaintenanceRequest[]
+
+  @@index([tenantId])
+  @@index([tenantId, assignedWorkerId])
 }
 
 model MaintenanceRequest {
@@ -124,6 +140,23 @@ model MaintenanceRequest {
   assignedWorkerId String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  workLogs         WorkLog[]
+
+  @@index([tenantId])
+  @@index([tenantId, assignedWorkerId])
+}
+
+model WorkLog {
+  id                   String              @id @default(cuid())
+  maintenanceRequestId String
+  maintenanceRequest   MaintenanceRequest  @relation(fields: [maintenanceRequestId], references: [id], onDelete: Cascade)
+  userId               String
+  user                 User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notes                String
+  timeSpent            Int                 @default(0) // seconds
+  createdAt            DateTime            @default(now())
+
+  @@index([maintenanceRequestId])
 }
 
 model Unit {
@@ -138,6 +171,8 @@ model Unit {
   leases     Lease[]
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  @@index([tenantId])
 }
 
 model Lease {
@@ -152,6 +187,8 @@ model Lease {
   monthlyRent Decimal   @db.Decimal(10, 2)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  @@index([tenantId])
 }
 
 model Invite {
@@ -162,13 +199,16 @@ model Invite {
   token      String   @unique
   expiresAt  DateTime
   createdAt  DateTime @default(now())
-  
+
   // Property assignment for tenant invites
   propertyId String?
   property   Property? @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   // (optional) referential integrity if you want:
   // user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, userId])
 }
 
 model Notification {
@@ -211,6 +251,9 @@ model Notification {
   
   // Webhook deliveries
   webhookDeliveries NotificationWebhookDelivery[]
+
+  @@index([tenantId])
+  @@index([tenantId, userId])
 }
 
 model NotificationWebhook {
@@ -233,6 +276,8 @@ model NotificationWebhook {
   updatedAt   DateTime @updatedAt
   
   deliveries  NotificationWebhookDelivery[]
+
+  @@index([tenantId])
 }
 
 model NotificationWebhookDelivery {
@@ -257,4 +302,20 @@ model NotificationWebhookDelivery {
   deliveredAt    DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+model Document {
+  id             String   @id @default(cuid())
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name           String
+  type           String // free-form label, e.g. Lease, Invoice, Notice
+  fileUrl        String
+  mimeType       String
+  sizeBytes      Int
+  uploadedById   String
+  uploadedBy     User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+
+  @@index([tenantId])
 }

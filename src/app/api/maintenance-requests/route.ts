@@ -1,51 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/server/db";
 import { getSessionUser } from "@/lib/auth";
+import { listMaintenanceRequestsForUser } from "@/server/queries";
 import { broadcastNotification } from "../notifications/stream/route";
+
+const createMaintenanceRequestSchema = z.object({
+  propertyId: z.string().min(1),
+  issue: z.string().min(1).max(500),
+  details: z.string().max(5000).optional(),
+  priority: z.enum(["Low", "Medium", "High"]).optional(),
+  status: z.enum(["New", "In Progress", "Completed"]).optional(),
+  assignedWorkerId: z.string().min(1).nullable().optional(),
+});
 
 export async function GET(req: NextRequest) {
   try {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    const tenantId = user.tenantId;
-    const { searchParams } = new URL(req.url);
-    const userRole = user.role;
-    const userId = user.id;
-    
-    console.log('🔍 Fetching maintenance requests for tenant ID:', tenantId, 'Role:', userRole, 'User ID:', userId);
-    
-    let whereClause: any = { tenantId };
-    
-    // Role-based filtering: workers only see assigned requests
-    if (userRole === 'worker' && userId) {
-      whereClause.assignedWorkerId = userId;
-    }
-    // Admin users see all requests (no additional filtering needed)
-    
-    const data = await prisma.maintenanceRequest.findMany({
-      where: whereClause,
-      include: {
-        property: {
-          select: { id: true, name: true, title: true, address: true }
-        },
-        tenant: {
-          select: { id: true, name: true }
-        }
-      },
-      orderBy: { dateSubmitted: 'desc' }
-    });
-    
-    console.log('📊 Found maintenance requests:', {
-      count: data.length,
-      tenantId,
-      requests: data.map(r => ({
-        id: r.id,
-        tenantId: r.tenantId,
-        issue: r.issue,
-        propertyName: r.property?.name
-      }))
-    });
-    
+
+    const data = await listMaintenanceRequestsForUser(user);
+
     return NextResponse.json({ data });
   } catch (e: any) {
     console.error("GET /api/maintenance-requests error:", e);
@@ -61,8 +36,21 @@ export async function POST(req: NextRequest) {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     const tenantId = user.tenantId;
-    const body = await req.json();
-    
+
+    const parsed = createMaintenanceRequestSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
+    }
+    const body = parsed.data;
+
+    const property = await prisma.property.findFirst({
+      where: { id: body.propertyId, tenantId },
+      select: { id: true },
+    });
+    if (!property) {
+      return NextResponse.json({ error: "Property not found" }, { status: 404 });
+    }
+
     const created = await prisma.maintenanceRequest.create({
       data: {
         tenantId,

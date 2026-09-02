@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/server/db";
-import { requireTenantId } from "@/lib/tenant";
+import { getSessionUser } from "@/lib/auth";
 import crypto from "node:crypto";
 import { sendAdminInviteEmail } from "@/lib/email";
+
+const inviteAdminSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  email: z.string().trim().email().max(320),
+});
 
 // tiny helper for json
 function json(data: any, init?: number | ResponseInit) {
@@ -11,9 +17,20 @@ function json(data: any, init?: number | ResponseInit) {
   return NextResponse.json(data, options);
 }
 
+async function requireAdmin() {
+  const user = await getSessionUser();
+  if (!user) return { user: null, error: json({ error: "Authentication required" }, { status: 401 }) };
+  if (user.role !== "admin" && user.role !== "owner") {
+    return { user: null, error: json({ error: "Forbidden" }, { status: 403 }) };
+  }
+  return { user, error: null };
+}
+
 export async function GET(req: NextRequest) {
   try {
-    const tenantId = requireTenantId(req);
+    const { user, error } = await requireAdmin();
+    if (error) return error;
+    const tenantId = user.tenantId;
     const { searchParams } = new URL(req.url);
     const page = Math.max(1, Number(searchParams.get("page") ?? 1));
     const pageSize = Math.min(
@@ -42,14 +59,16 @@ export async function GET(req: NextRequest) {
 // Invite admin (create or re-invite)
 export async function POST(req: NextRequest) {
   try {
-    const tenantId = requireTenantId(req);
-    const body = await req.json();
+    const { user, error } = await requireAdmin();
+    if (error) return error;
+    const tenantId = user.tenantId;
 
-    const name = (body.name ?? "").toString().trim() || null;
-    const email = (body.email ?? "").toString().trim().toLowerCase();
-    
-    if (!email) return json({ error: "Email is required" }, { status: 400 });
-    if (!name) return json({ error: "Name is required" }, { status: 400 });
+    const parsed = inviteAdminSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
+    }
+    const name = parsed.data.name;
+    const email = parsed.data.email.toLowerCase();
 
     const existing = await prisma.user.findFirst({
       where: { tenantId, email },
@@ -108,7 +127,9 @@ export async function POST(req: NextRequest) {
 // Delete admin
 export async function DELETE(req: NextRequest) {
   try {
-    const tenantId = requireTenantId(req);
+    const { user, error } = await requireAdmin();
+    if (error) return error;
+    const tenantId = user.tenantId;
     const url = new URL(req.url);
     const userId = url.searchParams.get("id");
     
@@ -116,12 +137,12 @@ export async function DELETE(req: NextRequest) {
       return json({ error: "User ID is required" }, { status: 400 });
     }
 
-    // Verify the user exists and belongs to this tenant
-    const user = await prisma.user.findFirst({
+    // Verify the target user exists and belongs to this tenant
+    const targetAdmin = await prisma.user.findFirst({
       where: { id: userId, tenantId, role: "admin" },
     });
-    
-    if (!user) {
+
+    if (!targetAdmin) {
       return json({ error: "Administrator not found" }, { status: 404 });
     }
 

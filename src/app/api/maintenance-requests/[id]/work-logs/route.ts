@@ -1,30 +1,69 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { prisma } from '@/server/db';
+import { getSessionUser } from '@/lib/auth';
 
-// Temporary in-memory storage for work logs
-// In a real application, this would be stored in the database
-const workLogsStorage: Record<string, any[]> = {};
+function formatTimestamp(date: Date) {
+  return (
+    date.toLocaleDateString('de-DE') +
+    ' ' +
+    date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  );
+}
+
+const createWorkLogSchema = z.object({
+  notes: z.string().trim().min(1).max(5000),
+  timeSpent: z.number().int().min(0).max(24 * 60 * 60).optional(),
+});
+
+async function loadRequestForUser(requestId: string, user: { tenantId: string; role: string; id: string }) {
+  const maintenanceRequest = await prisma.maintenanceRequest.findFirst({
+    where: { id: requestId, tenantId: user.tenantId },
+  });
+  if (!maintenanceRequest) return null;
+  if (user.role === 'worker' && maintenanceRequest.assignedWorkerId !== user.id) {
+    return null;
+  }
+  return maintenanceRequest;
+}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
     const { id: requestId } = await params;
-    const tenantId = request.headers.get('x-tenant-id');
 
-    if (!tenantId) {
+    const maintenanceRequest = await loadRequestForUser(requestId, user);
+    if (!maintenanceRequest) {
       return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
+        { error: 'Maintenance request not found' },
+        { status: 404 }
       );
     }
 
-    // Get work logs for this request
-    const workLogs = workLogsStorage[requestId] || [];
+    const workLogs = await prisma.workLog.findMany({
+      where: { maintenanceRequestId: requestId },
+      include: { user: { select: { id: true, name: true, email: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
 
     return NextResponse.json({
       success: true,
-      data: workLogs
+      data: workLogs.map((log) => ({
+        id: log.id,
+        requestId: log.maintenanceRequestId,
+        notes: log.notes,
+        userId: log.userId,
+        userName: log.user.name || log.user.email,
+        timeSpent: log.timeSpent,
+        createdAt: log.createdAt.toISOString(),
+        timestamp: formatTimestamp(log.createdAt),
+      })),
     });
   } catch (error) {
     console.error('Error fetching work logs:', error);
@@ -40,49 +79,47 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
     const { id: requestId } = await params;
-    const tenantId = request.headers.get('x-tenant-id');
 
-    if (!tenantId) {
+    const maintenanceRequest = await loadRequestForUser(requestId, user);
+    if (!maintenanceRequest) {
       return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
+        { error: 'Maintenance request not found' },
+        { status: 404 }
       );
     }
 
-    const body = await request.json();
-    const { notes, userId, userName, timeSpent } = body;
-
-    if (!notes || !userId) {
-      return NextResponse.json(
-        { error: 'Notes and user ID are required' },
-        { status: 400 }
-      );
+    const parsed = createWorkLogSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 });
     }
 
-    // Create new work log entry
-    const workLog = {
-      id: Date.now().toString(),
-      requestId,
-      notes,
-      userId,
-      userName: userName || 'Unknown User',
-      timeSpent: timeSpent || 0, // Time in seconds
-      timestamp: new Date().toLocaleDateString('de-DE') + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      createdAt: new Date().toISOString()
-    };
-
-    // Initialize array if it doesn't exist
-    if (!workLogsStorage[requestId]) {
-      workLogsStorage[requestId] = [];
-    }
-
-    // Add work log to storage
-    workLogsStorage[requestId].push(workLog);
+    const workLog = await prisma.workLog.create({
+      data: {
+        maintenanceRequestId: requestId,
+        userId: user.id,
+        notes: parsed.data.notes,
+        timeSpent: parsed.data.timeSpent ?? 0,
+      },
+      include: { user: { select: { id: true, name: true, email: true } } },
+    });
 
     return NextResponse.json({
       success: true,
-      data: workLog
+      data: {
+        id: workLog.id,
+        requestId: workLog.maintenanceRequestId,
+        notes: workLog.notes,
+        userId: workLog.userId,
+        userName: workLog.user.name || workLog.user.email,
+        timeSpent: workLog.timeSpent,
+        createdAt: workLog.createdAt.toISOString(),
+        timestamp: formatTimestamp(workLog.createdAt),
+      },
     });
   } catch (error) {
     console.error('Error creating work log:', error);

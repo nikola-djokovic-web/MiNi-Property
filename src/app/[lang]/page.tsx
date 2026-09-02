@@ -5,10 +5,14 @@ import { useCurrentUser } from '@/hooks/use-current-user';
 import { useEffect } from 'react';
 
 export default function LangRootPage() {
-  const { isAuthenticated, isLoading } = useCurrentUser();
+  const { isAuthenticated, isLoading, hydrate } = useCurrentUser();
   const pathname = usePathname();
   const lang = pathname.split('/')[1] || 'en';
-  
+
+  useEffect(() => {
+    hydrate();
+  }, [hydrate]);
+
   useEffect(() => {
     if (!isLoading) {
       if (isAuthenticated) {

@@ -67,37 +67,27 @@ export async function sendWorkerInviteEmail({
     </div>
   `;
 
-  console.log(`Attempting to send email to: ${email}`);
-  console.log(`Generated registration link: ${link}`);
-  console.log(`Token in link: ${token}`);
-  console.log(`Using Resend API Key: ${RESEND_API_KEY ? 'Present' : 'Missing'}`);
-  console.log(`Email FROM: ${EMAIL_FROM}`);
-  console.log(`App URL: ${APP_URL}`);
+  // Note: never log the registration link/token here - it's a live
+  // credential that grants access to the invited account.
 
   // Prefer Resend when available
   if (resend) {
     try {
-      console.log("Sending via Resend...");
-      const result = await resend.emails.send({ 
-        from: EMAIL_FROM, 
-        to: email, 
-        subject, 
-        html 
+      const result = await resend.emails.send({
+        from: EMAIL_FROM,
+        to: email,
+        subject,
+        html
       });
-      console.log("Resend success:", result);
       return result;
     } catch (err) {
       console.error("Resend failed:", err);
-      console.error("Error details:", JSON.stringify(err, null, 2));
       // fall through to SMTP
     }
-  } else {
-    console.log("Resend not configured, trying SMTP...");
   }
 
   // Fallback to SMTP
   if (transporter) {
-    console.log("Sending via SMTP...");
     return sendEmail(email, subject, html);
   } else {
     console.error("No email service configured!");
@@ -138,37 +128,27 @@ export async function sendAdminInviteEmail({
     </div>
   `;
 
-  console.log(`Attempting to send admin invitation to: ${email}`);
-  console.log(`Generated registration link: ${link}`);
-  console.log(`Token in link: ${token}`);
-  console.log(`Using Resend API Key: ${RESEND_API_KEY ? 'Present' : 'Missing'}`);
-  console.log(`Email FROM: ${EMAIL_FROM}`);
-  console.log(`App URL: ${APP_URL}`);
+  // Note: never log the registration link/token here - it's a live
+  // credential that grants access to the invited account.
 
   // Prefer Resend when available
   if (resend) {
     try {
-      console.log("Sending admin invitation via Resend...");
-      const result = await resend.emails.send({ 
-        from: EMAIL_FROM, 
-        to: email, 
-        subject, 
-        html 
+      const result = await resend.emails.send({
+        from: EMAIL_FROM,
+        to: email,
+        subject,
+        html
       });
-      console.log("Resend success:", result);
       return result;
     } catch (err) {
       console.error("Resend failed:", err);
-      console.error("Error details:", JSON.stringify(err, null, 2));
       // fall through to SMTP
     }
-  } else {
-    console.log("Resend not configured, trying SMTP...");
   }
 
   // Fallback to SMTP
   if (transporter) {
-    console.log("Sending admin invitation via SMTP...");
     return sendEmail(email, subject, html);
   } else {
     console.error("No email service configured!");
@@ -205,5 +185,39 @@ export async function sendPasswordResetEmail({
     }
   }
   if (transporter) return sendEmail(email, subject, html);
+  throw new Error("No email service configured");
+}
+
+export async function sendMessageEmail({
+  to,
+  fromName,
+  subject,
+  message,
+}: {
+  to: string;
+  fromName: string;
+  subject: string;
+  message: string;
+}) {
+  const escapedMessage = message
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br/>");
+  const html = `
+    <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+      <p style="color: #666; font-size: 13px;">Message from ${fromName} via MiNi Property</p>
+      <div style="padding: 16px; border: 1px solid #eee; border-radius: 6px; margin: 12px 0;">${escapedMessage}</div>
+    </div>
+  `;
+
+  if (resend) {
+    try {
+      return await resend.emails.send({ from: EMAIL_FROM, to, subject, html });
+    } catch (error) {
+      console.error("Resend message send failed:", error);
+    }
+  }
+  if (transporter) return sendEmail(to, subject, html);
   throw new Error("No email service configured");
 }

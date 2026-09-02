@@ -1,5 +1,6 @@
 import { prisma } from '@/server/db';
 import crypto from 'crypto';
+import { assertPublicHttpUrl } from '@/lib/url-safety';
 
 interface WebhookPayload {
   event: string;
@@ -45,7 +46,16 @@ class NotificationWebhookService {
 
   private async deliverWebhook(webhook: any, payload: WebhookPayload) {
     let delivery = null;
-    
+
+    try {
+      // Re-validate at send time (not just at creation) to defend against
+      // DNS rebinding and previously-stored unsafe URLs.
+      await assertPublicHttpUrl(webhook.url);
+    } catch (urlError) {
+      console.error('Blocked webhook delivery to unsafe URL:', webhook.url, urlError);
+      return;
+    }
+
     try {
       // Create delivery record
       delivery = await prisma.notificationWebhookDelivery.create({

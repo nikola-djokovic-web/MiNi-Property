@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/server/db";
-import { requireTenantId } from "@/lib/tenant";
+import { getSessionUser } from "@/lib/auth";
 import crypto from "node:crypto";
 import { sendWorkerInviteEmail } from "@/lib/email";
 import { broadcastNotification } from "../notifications/stream/route";
 
+const inviteWorkerSchema = z.object({
+  name: z.string().trim().max(200).optional(),
+  email: z.string().trim().email().max(320),
+});
+
 export async function GET(req: NextRequest) {
   try {
-    const tenantId = requireTenantId(req);
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    const tenantId = user.tenantId;
     const workers = await prisma.user.findMany({
       where: { tenantId, role: "worker" },
       orderBy: { createdAt: "desc" },
@@ -24,17 +32,23 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const tenantId = requireTenantId(req);
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    if (user.role !== "admin" && user.role !== "owner") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    const tenantId = user.tenantId;
 
     const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
     if (!tenant)
       return NextResponse.json({ error: "Invalid tenant id" }, { status: 400 });
 
-    const body = await req.json();
-    const name = (body.name ?? "").toString().trim() || null;
-    const email = (body.email ?? "").toString().trim().toLowerCase();
-    if (!email)
-      return NextResponse.json({ error: "Email is required" }, { status: 400 });
+    const parsed = inviteWorkerSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
+    }
+    const name = parsed.data.name?.trim() || null;
+    const email = parsed.data.email.toLowerCase();
 
     // idempotent: if same email already exists in tenant, return it (200) unless it’s a different role
     const existing = await prisma.user.findFirst({
@@ -179,7 +193,12 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const tenantId = requireTenantId(req);
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    if (user.role !== "admin" && user.role !== "owner") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    const tenantId = user.tenantId;
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('id');
     

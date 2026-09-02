@@ -24,25 +24,39 @@ export default function SendMessageDialog({ tenant }: { tenant: any }) {
   const [open, setOpen] = useState(false);
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = () => {
-    // In a real app, this would trigger an email or messaging service.
-    // For now, we'll just show a success toast.
-    console.log({
-      to: tenant.email,
-      subject,
-      message,
-    });
-    
-    toast({
+  const handleSubmit = async () => {
+    setSending(true);
+    try {
+      const res = await fetch(`/api/tenants/${tenant.id}/message`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject, message }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to send message");
+      }
+
+      toast({
         title: "Message Sent!",
         description: `Your message has been sent to ${tenant.name}.`,
-    });
+      });
 
-    setOpen(false);
-    setSubject("");
-    setMessage("");
+      setOpen(false);
+      setSubject("");
+      setMessage("");
+    } catch (err: any) {
+      toast({
+        title: "Failed to send message",
+        description: err?.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -101,8 +115,8 @@ export default function SendMessageDialog({ tenant }: { tenant: any }) {
           </div>
         </div>
         <DialogFooter>
-          <Button type="submit" onClick={handleSubmit} disabled={!subject || !message}>
-            Send Message
+          <Button type="submit" onClick={handleSubmit} disabled={!subject || !message || sending}>
+            {sending ? "Sending..." : "Send Message"}
           </Button>
         </DialogFooter>
       </DialogContent>

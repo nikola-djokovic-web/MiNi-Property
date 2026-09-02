@@ -31,7 +31,7 @@ export async function PUT(request: NextRequest) {
 
     // Update user
     const updatedUser = await prisma.user.update({
-      where: { id: userId },
+      where: { id: sessionUser.id },
       data: updateData
     });
 
@@ -42,6 +42,9 @@ export async function PUT(request: NextRequest) {
   } catch (error: any) {
     if (error?.message === 'UNAUTHENTICATED') {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    if (error?.code === 'P2002') {
+      return NextResponse.json({ error: 'Email already in use' }, { status: 409 });
     }
     console.error('Profile update error:', error);
     return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });

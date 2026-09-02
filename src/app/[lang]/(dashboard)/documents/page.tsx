@@ -1,8 +1,6 @@
-
-
 'use client';
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -14,12 +12,21 @@ import {
 } from "@/components/ui/table";
 import { AnimatedTableRow } from "@/components/ui/animated-table-row";
 import { AnimatePresence } from "framer-motion";
-import { documents as initialDocuments } from "@/lib/data";
 import { FileText, FileType, Trash2 } from "lucide-react";
 import PageHeader from "@/components/page-header";
 import AddDocumentDialog from "@/components/documents/add-document-dialog";
 import DeleteDocumentDialog from "@/components/documents/delete-document-dialog";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
+
+type DocumentItem = {
+  id: string;
+  name: string;
+  type: string;
+  url: string;
+  uploadDate: string;
+  size: string;
+};
 
 function getFileIcon(type: string) {
   if (type.toLowerCase().includes("pdf")) {
@@ -32,22 +39,57 @@ function getFileIcon(type: string) {
 }
 
 export default function DocumentsPage() {
-  const [documents, setDocuments] = useState(initialDocuments);
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  const handleAddDocument = (newDoc: Omit<typeof initialDocuments[0], 'id' | 'uploadDate'> & { file: File }) => {
-    const newDocument = {
-        id: `doc-${documents.length + 1}`,
-        name: newDoc.file.name,
-        type: newDoc.type,
-        uploadDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-        size: `${(newDoc.file.size / 1024 / 1024).toFixed(2)} MB`,
-    };
-    setDocuments(prevDocs => [...prevDocs, newDocument]);
-  }
+  const fetchDocuments = async () => {
+    try {
+      const res = await fetch('/api/documents');
+      if (!res.ok) throw new Error('Failed to load documents');
+      const { data } = await res.json();
+      setDocuments(data);
+    } catch (error) {
+      console.error(error);
+      toast({ title: 'Failed to load documents', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleDeleteDocument = (docId: string) => {
-    setDocuments(prevDocs => prevDocs.filter(d => d.id !== docId));
-  }
+  useEffect(() => {
+    fetchDocuments();
+  }, []);
+
+  const handleAddDocument = async (newDoc: { type: string; file: File }) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', newDoc.file);
+      formData.append('type', newDoc.type);
+
+      const res = await fetch('/api/documents', { method: 'POST', body: formData });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Upload failed');
+      }
+      const { data } = await res.json();
+      setDocuments((prev) => [data, ...prev]);
+    } catch (error: any) {
+      toast({ title: 'Failed to upload document', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteDocument = async (docId: string) => {
+    const previous = documents;
+    setDocuments((prev) => prev.filter((d) => d.id !== docId));
+    try {
+      const res = await fetch(`/api/documents/${docId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Delete failed');
+    } catch (error) {
+      setDocuments(previous);
+      toast({ title: 'Failed to delete document', variant: 'destructive' });
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -74,13 +116,25 @@ export default function DocumentsPage() {
             <TableBody>
               <TooltipProvider>
                 <AnimatePresence mode="popLayout">
+                  {!loading && documents.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                        No documents uploaded yet.
+                      </TableCell>
+                    </TableRow>
+                  )}
                   {documents.map((doc) => (
                     <AnimatedTableRow key={doc.id} layoutId={`document-${doc.id}`}>
                       <TableCell>
-                        <div className="flex items-center gap-3">
+                        <a
+                          href={doc.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 hover:underline"
+                        >
                           {getFileIcon(doc.name)}
                           <span className="font-medium">{doc.name}</span>
-                        </div>
+                        </a>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         {doc.type}

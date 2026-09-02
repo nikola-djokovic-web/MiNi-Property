@@ -1,35 +1,18 @@
 
 import { Locale } from '@/i18n-config';
-import { headers } from 'next/headers';
+import { getSessionUser } from '@/lib/auth';
+import {
+  listMaintenanceRequestsForUser,
+  listPropertiesForUser,
+  listTenantsForUser,
+} from '@/server/queries';
 import DashboardPageContent from './dashboard-page-content';
 import {
   ChartConfig,
 } from '@/components/ui/chart';
 
-const TENANT_ID = process.env.NEXT_PUBLIC_DEMO_TENANT_ID ?? "";
-
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
-
-async function apiGet<T>(url: string): Promise<T> {
-  const requestHeaders = await headers();
-  const res = await fetch(url, {
-    headers: {
-      cookie: requestHeaders.get('cookie') ?? '',
-      "x-tenant-id": TENANT_ID,
-    },
-    // Remove cache: "no-store" to avoid static generation issues
-  });
-  if (!res.ok) {
-    const msg = await res.text();
-    throw new Error(
-      res.status === 404
-        ? `Not found: ${url}`
-        : `API error ${res.status}: ${msg}`
-    );
-  }
-  return res.json();
-}
 
 const maintenanceChartConfig = {
   requests: {
@@ -66,40 +49,19 @@ const financialChartConfig = {
 export default async function Dashboard({ params }: { params: Promise<{ lang: Locale }>}) {
   const { lang } = await params;
 
-  console.log('🔧 Dashboard server-side - starting API fetches...');
+  const user = await getSessionUser();
 
-  // Use full URLs for server-side fetching
-  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:9002';
-  
-  // Fetch real data from APIs with better error handling
-  const [
-    maintenanceRequestsResult,
-    propertiesResult,
-    tenantsResult,
-  ] = await Promise.all([
-    apiGet<{ data: any[] }>(`${baseUrl}/api/maintenance-requests`).catch((error) => {
-      console.error('❌ Failed to fetch maintenance requests:', error.message);
-      return { data: [] };
-    }),
-    apiGet<{ data: any[] }>(`${baseUrl}/api/properties`).catch((error) => {
-      console.error('❌ Failed to fetch properties:', error.message);
-      return { data: [] };
-    }),
-    apiGet<{ data: any[] }>(`${baseUrl}/api/tenants`).catch((error) => {
-      console.error('❌ Failed to fetch tenants:', error.message);
-      return { data: [] };
-    }),
-  ]);
+  // Fetch data directly from the database (no self HTTP round-trip).
+  // The (dashboard) layout already redirects unauthenticated users to /login.
+  const [allMaintenanceRequests, properties, tenantsResult] = user
+    ? await Promise.all([
+        listMaintenanceRequestsForUser(user),
+        listPropertiesForUser(user),
+        listTenantsForUser(user),
+      ])
+    : [[], [], { data: [] as any[] }];
 
-  const allMaintenanceRequests = maintenanceRequestsResult.data || [];
-  const properties = propertiesResult.data || [];
-  const tenants = tenantsResult.data || [];
-
-  console.log('📊 Dashboard server-side data fetched:', {
-    maintenanceRequests: allMaintenanceRequests.length,
-    properties: properties.length,
-    tenants: tenants.length
-  });
+  const tenants = tenantsResult.data;
 
   const newCount = allMaintenanceRequests.filter(
     (r: any) => r.status === 'New'

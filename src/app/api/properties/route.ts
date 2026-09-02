@@ -1,29 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/server/db";
 import { getSessionUser } from "@/lib/auth";
+import { listPropertiesForUser } from "@/server/queries";
 import { broadcastNotification } from "../notifications/stream/route";
+
+const createPropertySchema = z.object({
+  title: z.string().trim().max(200).optional(),
+  name: z.string().trim().max(200).optional(),
+  address: z.string().trim().max(300).optional(),
+  city: z.string().trim().max(120).optional(),
+  imageUrl: z.string().trim().max(2000).optional(),
+  imageHint: z.string().trim().max(200).nullable().optional(),
+  type: z.enum(["Apartment", "House", "Condo", "Townhouse", "Commercial"]).optional(),
+  assignedWorkerId: z.string().min(1).nullable().optional(),
+});
 
 export async function GET(req: NextRequest) {
   try {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    const { searchParams } = new URL(req.url);
-    const userRole = user.role;
-    const userId = user.id;
-    
-    let whereClause: any = { tenantId: user.tenantId };
-    
-    // Role-based filtering: workers only see assigned properties
-    if (userRole === 'worker' && userId) {
-      whereClause.assignedWorkerId = userId;
-    }
-    // Admin users see all properties (no additional filtering needed)
-    
-    const data = await prisma.property.findMany({
-      where: whereClause,
-      orderBy: { createdAt: "desc" },
-    });
-    
+
+    const data = await listPropertiesForUser(user);
+
     return NextResponse.json({ data });
   } catch (e: any) {
     console.error("GET /api/properties error:", e);
@@ -38,15 +37,22 @@ export async function POST(req: NextRequest) {
   try {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    if (user.role !== "admin" && user.role !== "owner") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     const tenantId = user.tenantId;
-    const body = await req.json();
+
+    const parsed = createPropertySchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
+    }
+    const body = parsed.data;
 
     // Map + defaults for required columns to avoid 500s
-    const title =
-      (body.title ?? body.name ?? "").toString().trim() || "Untitled";
-    const name = (body.name ?? body.title ?? title).toString().trim() || title;
-    const address = (body.address ?? "").toString();
-    const city = (body.city ?? "").toString();
+    const title = (body.title ?? body.name ?? "").trim() || "Untitled";
+    const name = (body.name ?? body.title ?? title).trim() || title;
+    const address = body.address ?? "";
+    const city = body.city ?? "";
 
     const created = await prisma.property.create({
       data: {
@@ -56,9 +62,9 @@ export async function POST(req: NextRequest) {
         city,
         // presentation fields
         title,
-        imageUrl: (body.imageUrl ?? "").toString(),
+        imageUrl: body.imageUrl ?? "",
         imageHint: body.imageHint ?? null,
-        type: (body.type ?? "Apartment").toString(),
+        type: body.type ?? "Apartment",
         assignedWorkerId: body.assignedWorkerId ?? null,
       },
     });

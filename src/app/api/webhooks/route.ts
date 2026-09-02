@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma as db } from '@/server/db';
 import { z } from 'zod';
 import crypto from 'crypto';
+import { getSessionUser } from '@/lib/auth';
+import { assertPublicHttpUrl } from '@/lib/url-safety';
 
 const createWebhookSchema = z.object({
   name: z.string().min(1),
@@ -12,20 +14,36 @@ const createWebhookSchema = z.object({
   active: z.boolean().default(true),
 });
 
+async function requireAdmin() {
+  const user = await getSessionUser();
+  if (!user) {
+    return { user: null, error: NextResponse.json({ error: 'Authentication required' }, { status: 401 }) };
+  }
+  if (user.role !== 'admin' && user.role !== 'owner') {
+    return { user: null, error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
+  }
+  return { user, error: null };
+}
+
 // GET /api/webhooks - Get all webhooks for tenant
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId');
-
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
-    }
+    const { user, error } = await requireAdmin();
+    if (error) return error;
 
     const webhooks = await db.notificationWebhook.findMany({
-      where: { tenantId },
+      where: { tenantId: user.tenantId },
       orderBy: { createdAt: 'desc' },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        url: true,
+        active: true,
+        events: true,
+        headers: true,
+        createdAt: true,
+        updatedAt: true,
+        // secret intentionally excluded - it's only needed server-side to sign deliveries
         deliveries: {
           take: 5,
           orderBy: { createdAt: 'desc' },
@@ -51,15 +69,17 @@ export async function GET(request: NextRequest) {
 // POST /api/webhooks - Create new webhook
 export async function POST(request: NextRequest) {
   try {
+    const { user, error } = await requireAdmin();
+    if (error) return error;
+
     const body = await request.json();
-    const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId');
-
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
-    }
-
     const validatedData = createWebhookSchema.parse(body);
+
+    try {
+      await assertPublicHttpUrl(validatedData.url);
+    } catch (urlError: any) {
+      return NextResponse.json({ error: urlError?.message ?? 'Invalid webhook URL' }, { status: 400 });
+    }
 
     // Generate secret if not provided
     if (!validatedData.secret) {
@@ -69,7 +89,7 @@ export async function POST(request: NextRequest) {
     const webhook = await db.notificationWebhook.create({
       data: {
         ...validatedData,
-        tenantId,
+        tenantId: user.tenantId,
       },
     });
 

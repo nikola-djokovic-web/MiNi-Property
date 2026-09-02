@@ -333,13 +333,13 @@ export default function TenantsPage() {
                           <Badge
                             className={cn(
                               "justify-center",
-                              getStatusClasses((tenant as any).status ?? "New")
+                              getStatusClasses((tenant as any).registered ? "Active" : "New")
                             )}
                           >
-                            {getStatusIcon((tenant as any).status ?? "New")}
-                            {(tenant as any).status ?? "New"}
+                            {getStatusIcon((tenant as any).registered ? "Active" : "New")}
+                            {(tenant as any).registered ? "Active" : "New"}
                           </Badge>
-                          {(tenant as any).status === "New" &&
+                          {!(tenant as any).registered &&
                             onboardingProgress < 100 && (
                               <TooltipProvider>
                                 <Tooltip>

@@ -3,7 +3,7 @@
 import { create } from 'zustand';
 import { tenants } from '@/lib/data';
 
-export type UserRole = 'admin' | 'worker' | 'tenant';
+export type UserRole = 'admin' | 'owner' | 'worker' | 'tenant';
 
 export type User = {
   id: string;
@@ -14,7 +14,9 @@ export type User = {
   profileImage?: string;
   companyName?: string;
   companyLogo?: string;
-  // Note: These are property IDs the worker is *primarily* responsible for, 
+  // Set for tenant-role users: the single property they're assigned to.
+  propertyId?: string | null;
+  // Note: These are property IDs the worker is *primarily* responsible for,
   // but they can also be assigned to other properties ad-hoc.
   assignedPropertyIds?: string[];
 };

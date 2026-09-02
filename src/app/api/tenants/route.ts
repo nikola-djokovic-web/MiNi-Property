@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/server/db";
 import { getSessionUser } from "@/lib/auth";
+import { listTenantsForUser } from "@/server/queries";
 import crypto from "node:crypto";
 import { sendWorkerInviteEmail } from "@/lib/email";
 import { broadcastNotification } from "../notifications/stream/route";
+
+const inviteTenantSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  email: z.string().trim().email().max(320),
+  propertyId: z.string().min(1),
+});
 
 // tiny helper for json
 function json(data: any, init?: number | ResponseInit) {
@@ -17,7 +25,6 @@ export async function GET(req: NextRequest) {
   try {
     const user = await getSessionUser();
     if (!user) return json({ error: "Authentication required" }, 401);
-    const tenantId = user.tenantId;
     const { searchParams } = new URL(req.url);
     const page = Math.max(1, Number(searchParams.get("page") ?? 1));
     const pageSize = Math.min(
@@ -25,64 +32,9 @@ export async function GET(req: NextRequest) {
       Math.max(1, Number(searchParams.get("pageSize") ?? 10))
     );
 
-    const where = { tenantId, role: "tenant" as const };
-    const [total, users, invites] = await Promise.all([
-      prisma.user.count({ where }),
-      prisma.user.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-      // Get invites with property data for these users
-      prisma.invite.findMany({
-        where: { 
-          tenantId,
-          userId: { in: [] } // Will be populated after we get users
-        },
-        include: {
-          property: {
-            select: { id: true, title: true, name: true }
-          }
-        },
-        orderBy: { createdAt: 'desc' }
-      })
-    ]);
+    const result = await listTenantsForUser(user, { page, pageSize });
 
-    // Get user IDs and fetch their invites
-    const userIds = users.map(user => user.id);
-    const userInvites = await prisma.invite.findMany({
-      where: { 
-        tenantId,
-        userId: { in: userIds }
-      },
-      include: {
-        property: {
-          select: { id: true, title: true, name: true }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    // Create a map of userId to their latest invite
-    const inviteMap = new Map();
-    userInvites.forEach(invite => {
-      if (!inviteMap.has(invite.userId)) {
-        inviteMap.set(invite.userId, invite);
-      }
-    });
-
-    // Transform data to include property information
-    const data = users.map(user => {
-      const latestInvite = inviteMap.get(user.id);
-      return {
-        ...user,
-        propertyId: latestInvite?.propertyId || null,
-        property: latestInvite?.property || null,
-      };
-    });
-
-    return json({ data, total, page, pageSize });
+    return json(result);
   } catch (e: any) {
     console.error("GET /api/tenants error:", e);
     return json({ error: e?.message ?? "Internal error" }, { status: 500 });
@@ -94,16 +46,18 @@ export async function POST(req: NextRequest) {
   try {
     const user = await getSessionUser();
     if (!user) return json({ error: "Authentication required" }, 401);
+    if (user.role !== "admin" && user.role !== "owner") {
+      return json({ error: "Forbidden" }, { status: 403 });
+    }
     const tenantId = user.tenantId;
-    const body = await req.json();
 
-    const name = (body.name ?? "").toString().trim() || null;
-    const email = (body.email ?? "").toString().trim().toLowerCase();
-    const propertyId = (body.propertyId ?? "").toString().trim() || null;
-    
-    if (!email) return json({ error: "Email is required" }, { status: 400 });
-    if (!name) return json({ error: "Name is required" }, { status: 400 });
-    if (!propertyId) return json({ error: "Property assignment is required" }, { status: 400 });
+    const parsed = inviteTenantSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
+    }
+    const name = parsed.data.name;
+    const email = parsed.data.email.toLowerCase();
+    const propertyId = parsed.data.propertyId;
 
     // Verify property exists and belongs to tenant
     const property = await prisma.property.findFirst({
@@ -264,7 +218,12 @@ export async function POST(req: NextRequest) {
 // Delete tenant
 export async function DELETE(req: NextRequest) {
   try {
-    const tenantId = requireTenantId(req);
+    const sessionUser = await getSessionUser();
+    if (!sessionUser) return json({ error: "Authentication required" }, 401);
+    if (sessionUser.role !== "admin" && sessionUser.role !== "owner") {
+      return json({ error: "Forbidden" }, { status: 403 });
+    }
+    const tenantId = sessionUser.tenantId;
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('id');
     

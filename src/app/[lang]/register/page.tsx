@@ -24,15 +24,7 @@ function RegisterContent() {
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
-
-  // Enhanced debugging in useEffect to avoid SSR issues
-  useEffect(() => {
-    console.log("Registration page loaded");
-    console.log("Current URL:", window.location.href);
-    console.log("Search params:", sp.toString());
-    console.log("Token from params:", token);
-    console.log("All URL params:", Object.fromEntries(sp.entries()));
-  }, [sp, token]);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -61,6 +53,7 @@ function RegisterContent() {
 
   const onSubmit = async () => {
     setError(null);
+    setSubmitting(true);
     try {
       const res = await fetch("/api/invites/complete", {
         method: "POST",
@@ -86,6 +79,8 @@ function RegisterContent() {
       }
     } catch (e: any) {
       setError(e?.message || "Failed to complete registration");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -135,8 +130,8 @@ function RegisterContent() {
             <p className="text-xs text-destructive">Passwords do not match</p>
           )}
           <div className="pt-2">
-            <Button onClick={onSubmit} disabled={!canSubmit}>
-              Create account
+            <Button onClick={onSubmit} disabled={!canSubmit || submitting}>
+              {submitting ? "Creating account..." : "Create account"}
             </Button>
           </div>
         </CardContent>
