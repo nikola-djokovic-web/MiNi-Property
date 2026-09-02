@@ -175,3 +175,35 @@ export async function sendAdminInviteEmail({
     throw new Error("No email service configured. Please set RESEND_API_KEY or SMTP credentials.");
   }
 }
+
+export async function sendPasswordResetEmail({
+  email,
+  token,
+}: {
+  email: string;
+  token: string;
+}) {
+  const link = `${APP_URL}/en/reset-password?token=${encodeURIComponent(token)}`;
+  const subject = "Reset your MiNi Property password";
+  const html = `
+    <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+      <h2 style="color: #333;">Reset your password</h2>
+      <p>We received a request to reset your MiNi Property password.</p>
+      <div style="margin: 30px 0;">
+        <a href="${link}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a>
+      </div>
+      <p style="color: #666; font-size: 14px;">This link expires in 1 hour and can only be used once.</p>
+      <p style="color: #666; font-size: 12px;">If you did not request this, you can safely ignore this email.</p>
+    </div>
+  `;
+
+  if (resend) {
+    try {
+      return await resend.emails.send({ from: EMAIL_FROM, to: email, subject, html });
+    } catch (error) {
+      console.error("Resend password reset failed:", error);
+    }
+  }
+  if (transporter) return sendEmail(email, subject, html);
+  throw new Error("No email service configured");
+}

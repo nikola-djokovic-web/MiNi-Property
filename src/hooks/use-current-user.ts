@@ -1,7 +1,6 @@
 
 
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import { tenants } from '@/lib/data';
 
 export type UserRole = 'admin' | 'worker' | 'tenant';
@@ -66,56 +65,33 @@ interface CurrentUserState {
   login: (user: User) => void;
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
+  hydrate: () => Promise<void>;
 }
 
-export const useCurrentUser = create<CurrentUserState>()(
-    persist(
-        (set, get) => ({
+export const useCurrentUser = create<CurrentUserState>()((set) => ({
             user: null,
             isAuthenticated: false,
             isLoading: true,
             login: (user) => {
-                console.log('🔑 Login called with user:', { id: user.id, email: user.email, role: user.role });
                 set({ user, isAuthenticated: true, isLoading: false });
-                console.log('🔑 State after login:', get());
             },
             logout: () => {
-                console.log('🚪 Logout called');
                 set({ user: null, isAuthenticated: false, isLoading: false });
             },
             updateUser: (updates) => set((state) => ({
                 user: state.user ? { ...state.user, ...updates } : null
             })),
-        }),
-        {
-            name: 'current-user-storage',
-            storage: createJSONStorage(() => localStorage),
-            onRehydrateStorage: () => (state, error) => {
-                console.log('🔄 Rehydrating user storage');
-                if (error) {
-                    console.log('❌ Error during rehydration:', error);
-                }
-                if (state) {
-                    console.log('✅ User storage rehydrated:', {
-                        isAuthenticated: state.isAuthenticated,
-                        user: state.user ? { id: state.user.id, email: state.user.email } : null
-                    });
-                    // Ensure loading is set to false after rehydration
-                    state.isLoading = false;
-                } else {
-                    console.log('❌ No state found during rehydration');
+            hydrate: async () => {
+                try {
+                    const response = await fetch('/api/auth/me', { cache: 'no-store' });
+                    if (!response.ok) throw new Error('Unauthenticated');
+                    const data = await response.json();
+                    set({ user: data.user, isAuthenticated: true, isLoading: false });
+                } catch {
+                    set({ user: null, isAuthenticated: false, isLoading: false });
                 }
             },
-            partialize: (state) => {
-                console.log('💾 Partializing state for storage:', {
-                    user: state.user ? { id: state.user.id, email: state.user.email } : null,
-                    isAuthenticated: state.isAuthenticated
-                });
-                return { user: state.user, isAuthenticated: state.isAuthenticated };
-            },
-        }
-    )
-);
+        }));
 
     
 

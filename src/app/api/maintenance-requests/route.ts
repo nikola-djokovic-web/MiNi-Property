@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/server/db";
-import { requireTenantId } from "@/lib/tenant";
+import { getSessionUser } from "@/lib/auth";
 import { broadcastNotification } from "../notifications/stream/route";
 
 export async function GET(req: NextRequest) {
   try {
-    const tenantId = requireTenantId(req);
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    const tenantId = user.tenantId;
     const { searchParams } = new URL(req.url);
-    const userRole = searchParams.get('userRole');
-    const userId = searchParams.get('userId');
+    const userRole = user.role;
+    const userId = user.id;
     
     console.log('🔍 Fetching maintenance requests for tenant ID:', tenantId, 'Role:', userRole, 'User ID:', userId);
     
@@ -56,7 +58,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const tenantId = requireTenantId(req);
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    const tenantId = user.tenantId;
     const body = await req.json();
     
     const created = await prisma.maintenanceRequest.create({

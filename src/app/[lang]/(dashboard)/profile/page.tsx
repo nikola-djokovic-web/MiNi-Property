@@ -64,7 +64,7 @@ export default function ProfilePage() {
     
     setLoading(true);
     try {
-      const response = await fetch('/api/profile', {
+      const response = await fetch('/api/account/password', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -140,11 +140,7 @@ export default function ProfilePage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          userId: user.id,
-          currentPassword,
-          newPassword,
-        }),
+        body: JSON.stringify({ currentPassword, newPassword }),
       });
 
       if (!response.ok) {

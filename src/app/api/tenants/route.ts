@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/server/db";
-import { requireTenantId } from "@/lib/tenant";
+import { getSessionUser } from "@/lib/auth";
 import crypto from "node:crypto";
 import { sendWorkerInviteEmail } from "@/lib/email";
 import { broadcastNotification } from "../notifications/stream/route";
@@ -15,7 +15,9 @@ function json(data: any, init?: number | ResponseInit) {
 // List tenants (pagination)
 export async function GET(req: NextRequest) {
   try {
-    const tenantId = requireTenantId(req);
+    const user = await getSessionUser();
+    if (!user) return json({ error: "Authentication required" }, 401);
+    const tenantId = user.tenantId;
     const { searchParams } = new URL(req.url);
     const page = Math.max(1, Number(searchParams.get("page") ?? 1));
     const pageSize = Math.min(
@@ -90,7 +92,9 @@ export async function GET(req: NextRequest) {
 // Invite tenant (create or re-invite)
 export async function POST(req: NextRequest) {
   try {
-    const tenantId = requireTenantId(req);
+    const user = await getSessionUser();
+    if (!user) return json({ error: "Authentication required" }, 401);
+    const tenantId = user.tenantId;
     const body = await req.json();
 
     const name = (body.name ?? "").toString().trim() || null;

@@ -1,5 +1,6 @@
 
 import { Locale } from '@/i18n-config';
+import { headers } from 'next/headers';
 import DashboardPageContent from './dashboard-page-content';
 import {
   ChartConfig,
@@ -11,8 +12,12 @@ const TENANT_ID = process.env.NEXT_PUBLIC_DEMO_TENANT_ID ?? "";
 export const dynamic = 'force-dynamic';
 
 async function apiGet<T>(url: string): Promise<T> {
+  const requestHeaders = await headers();
   const res = await fetch(url, {
-    headers: { "x-tenant-id": TENANT_ID },
+    headers: {
+      cookie: requestHeaders.get('cookie') ?? '',
+      "x-tenant-id": TENANT_ID,
+    },
     // Remove cache: "no-store" to avoid static generation issues
   });
   if (!res.ok) {

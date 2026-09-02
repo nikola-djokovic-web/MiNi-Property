@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/server/db";
-import { resolveTenantId } from "@/lib/tenant";
+import { getSessionUser } from "@/lib/auth";
 import { broadcastNotification } from "../notifications/stream/route";
 
 export async function GET(req: NextRequest) {
   try {
-    const tenantId = await resolveTenantId(req);
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     const { searchParams } = new URL(req.url);
-    const userRole = searchParams.get('userRole');
-    const userId = searchParams.get('userId');
+    const userRole = user.role;
+    const userId = user.id;
     
-    let whereClause: any = { tenantId };
+    let whereClause: any = { tenantId: user.tenantId };
     
     // Role-based filtering: workers only see assigned properties
     if (userRole === 'worker' && userId) {
@@ -35,7 +36,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const tenantId = await resolveTenantId(req);
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    const tenantId = user.tenantId;
     const body = await req.json();
 
     // Map + defaults for required columns to avoid 500s

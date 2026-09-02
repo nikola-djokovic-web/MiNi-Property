@@ -352,7 +352,8 @@ export default function AppHeader() {
   const router = useRouter();
   const pathname = usePathname();
 
-  const handleLogout = () => {
+    const handleLogout = async () => {
+        await fetch('/api/auth/logout', { method: 'POST' });
     logout();
     const currentLang = pathname.split('/')[1] || 'en';
     router.push(`/${currentLang}/login`);

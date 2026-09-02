@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/server/db";
 import bcrypt from "bcryptjs";
+import { createSession, publicUser } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   const { token, password, name } = (await req.json()) as {
@@ -41,16 +42,11 @@ export async function POST(req: NextRequest) {
   // Consume the invite so the link can't be reused
   await prisma.invite.delete({ where: { token } });
 
+  await createSession(updatedUser.id);
+
   // Return user data for auto-login
   return NextResponse.json({ 
     ok: true,
-    user: {
-      id: updatedUser.id,
-      name: updatedUser.name,
-      email: updatedUser.email,
-      role: updatedUser.role,
-      tenantId: updatedUser.tenantId,
-      profileImage: (updatedUser as any).profileImage || null,
-    }
+    user: publicUser(updatedUser),
   });
 }

@@ -21,6 +21,8 @@ export default function LoginPageContent() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   // Safe access with type assertion and fallbacks
   const loginData = (dict as any)?.login;
@@ -62,6 +64,24 @@ export default function LoginPageContent() {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+    try {
+      await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      setResetSent(true);
+    } catch {
+      setError("Unable to process the request. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-md space-y-6 p-6">
@@ -75,7 +95,17 @@ export default function LoginPageContent() {
         <Card>
           <CardHeader />
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            {showForgotPassword ? (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <p className="text-sm text-muted-foreground">Enter your email and we will send a password reset link.</p>
+                <Label htmlFor="reset-email">{emailLabel}</Label>
+                <Input id="reset-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
+                {resetSent && <p className="text-sm text-green-700">If an account exists for that email, a reset link has been sent.</p>}
+                {error && <div className="text-sm text-red-600 bg-red-50 p-2 rounded">{error}</div>}
+                <Button type="submit" className="w-full" disabled={isLoading}>{isLoading ? "Sending..." : "Send reset link"}</Button>
+                <Button type="button" variant="ghost" className="w-full" onClick={() => { setShowForgotPassword(false); setResetSent(false); setError(""); }}>Back to sign in</Button>
+              </form>
+            ) : <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">{emailLabel}</Label>
                 <Input
@@ -88,6 +118,7 @@ export default function LoginPageContent() {
                   required
                 />
               </div>
+              
               <div className="space-y-2">
                 <Label htmlFor="password">{passwordLabel}</Label>
                 <Input
@@ -100,6 +131,9 @@ export default function LoginPageContent() {
                   required
                 />
               </div>
+              <button type="button" className="text-sm text-primary underline-offset-4 hover:underline" onClick={() => { setShowForgotPassword(true); setError(""); }}>
+                Forgot password?
+              </button>
               {error && (
                 <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
                   {error}
@@ -108,7 +142,7 @@ export default function LoginPageContent() {
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Signing in..." : signInButton}
               </Button>
-            </form>
+            </form>}
             <div className="mt-4 text-sm text-gray-600 text-center">
               <p>Demo credentials:</p>
               <p>Email: admin@example.com</p>

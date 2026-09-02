@@ -13,7 +13,7 @@ export default function DashboardLayoutClient({
   children: React.ReactNode;
   lang: Locale;
 }) {
-  const { isAuthenticated, user, isLoading } = useCurrentUser();
+  const { isAuthenticated, user, isLoading, hydrate } = useCurrentUser();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -27,6 +27,10 @@ export default function DashboardLayoutClient({
 
   // Allow access to maintenance page even when auth is broken (for testing)
   const isMaintenancePage = pathname === `/${lang}/maintenance`;
+
+  React.useEffect(() => {
+    hydrate();
+  }, [hydrate]);
 
   React.useEffect(() => {
     if (!isLoading && !isAuthenticated && !isMaintenancePage) {

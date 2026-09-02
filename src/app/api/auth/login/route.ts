@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/server/db";
 import bcrypt from "bcryptjs";
+import { createSession, publicUser } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
@@ -42,16 +43,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Return user data for login
+    await createSession(user.id);
+
     return NextResponse.json({
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        tenantId: user.tenantId,
-        profileImage: (user as any).profileImage || null,
-      }
+      user: publicUser(user),
     });
 
   } catch (error) {

@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/server/db";
 import bcrypt from 'bcryptjs';
+import { publicUser, requireUser } from '@/lib/auth';
 
 export async function PUT(request: NextRequest) {
   try {
-    const { userId, name, email, profileImage, currentPassword, newPassword } = await request.json();
-
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
-    }
+    const { name, email, profileImage } = await request.json();
+    const sessionUser = await requireUser();
 
     // Get current user
     const user = await prisma.user.findUnique({
-      where: { id: userId }
+      where: { id: sessionUser.id }
     });
 
     if (!user) {
@@ -31,23 +29,6 @@ export async function PUT(request: NextRequest) {
     if (email) updateData.email = email;
     if (profileImage !== undefined) updateData.profileImage = profileImage;
 
-    // Handle password change
-    if (currentPassword && newPassword) {
-      // Verify current password
-      if (!user.passwordHash) {
-        return NextResponse.json({ error: 'No password set for this account' }, { status: 400 });
-      }
-
-      const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
-      
-      if (!isCurrentPasswordValid) {
-        return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 });
-      }
-
-      // Hash new password
-      updateData.passwordHash = await bcrypt.hash(newPassword, 12);
-    }
-
     // Update user
     const updatedUser = await prisma.user.update({
       where: { id: userId },
@@ -55,19 +36,13 @@ export async function PUT(request: NextRequest) {
     });
 
     // Return user data excluding sensitive fields
-    const responseUser = {
-      id: updatedUser.id,
-      name: updatedUser.name,
-      email: updatedUser.email,
-      role: updatedUser.role,
-      tenantId: updatedUser.tenantId,
-      profileImage: (updatedUser as any).profileImage || null,
-      createdAt: updatedUser.createdAt,
-      updatedAt: updatedUser.updatedAt
-    };
+    const responseUser = publicUser(updatedUser);
 
     return NextResponse.json({ user: responseUser });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message === 'UNAUTHENTICATED') {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
     console.error('Profile update error:', error);
     return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });
   }
