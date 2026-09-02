@@ -19,7 +19,12 @@ async function main() {
   // Seed admin user with password
   const adminUser = await prisma.user.upsert({
     where: { email: "admin@example.com" },
-    update: {},
+    update: {
+      name: "Admin User",
+      role: "admin",
+      tenantId: tenant.id,
+      passwordHash: adminPasswordHash,
+    },
     create: {
       id: "user-admin", // Fixed ID to match frontend
       email: "admin@example.com",
@@ -33,7 +38,11 @@ async function main() {
   // Seed a demo user (owner without password for now)
   await prisma.user.upsert({
     where: { email: "owner@demo.com" },
-    update: {},
+    update: {
+      name: "Owner",
+      role: "owner",
+      tenantId: tenant.id,
+    },
     create: {
       email: "owner@demo.com",
       name: "Owner",
@@ -45,7 +54,7 @@ async function main() {
   // Seed one property
   const property = await prisma.property.upsert({
     where: { id: "seed-prop-1" },
-    update: {},
+    update: { tenantId: tenant.id },
     create: {
       id: "seed-prop-1",
       tenantId: tenant.id,
@@ -59,7 +68,7 @@ async function main() {
   // Seed another property for variety
   const property2 = await prisma.property.upsert({
     where: { id: "seed-prop-2" },
-    update: {},
+    update: { tenantId: tenant.id },
     create: {
       id: "seed-prop-2",
       tenantId: tenant.id,
@@ -73,7 +82,7 @@ async function main() {
   // Seed units
   const unit1 = await prisma.unit.upsert({
     where: { id: "seed-unit-1" },
-    update: {},
+    update: { tenantId: tenant.id, propertyId: property.id },
     create: {
       id: "seed-unit-1",
       label: "A101",
@@ -86,7 +95,7 @@ async function main() {
 
   const unit2 = await prisma.unit.upsert({
     where: { id: "seed-unit-2" },
-    update: {},
+    update: { tenantId: tenant.id, propertyId: property2.id },
     create: {
       id: "seed-unit-2",
       label: "B205",
@@ -101,7 +110,13 @@ async function main() {
   const tenantPasswordHash = await bcrypt.hash("tenant123", 12);
   await prisma.user.upsert({
     where: { email: "tenant@example.com" },
-    update: {},
+    update: {
+      name: "Test Tenant",
+      role: "tenant",
+      tenantId: tenant.id,
+      passwordHash: tenantPasswordHash,
+      propertyId: property.id,
+    },
     create: {
       email: "tenant@example.com",
       name: "Test Tenant",
@@ -116,7 +131,12 @@ async function main() {
   const workerPasswordHash = await bcrypt.hash("worker123", 12);
   const workerUser = await prisma.user.upsert({
     where: { email: "worker@example.com" },
-    update: {},
+    update: {
+      name: "Test Worker",
+      role: "worker",
+      tenantId: tenant.id,
+      passwordHash: workerPasswordHash,
+    },
     create: {
       id: "user-worker-1", // Fixed ID to match frontend
       email: "worker@example.com",
@@ -130,7 +150,10 @@ async function main() {
   // Seed leases
   await prisma.lease.upsert({
     where: { id: "seed-lease-1" },
-    update: {},
+    update: {
+      tenantId: tenant.id,
+      unitId: unit1.id,
+    },
     create: {
       id: "seed-lease-1",
       unitId: unit1.id,
@@ -151,7 +174,7 @@ async function main() {
   // Seed maintenance requests for testing role-based filtering
   const maintenanceRequest1 = await prisma.maintenanceRequest.upsert({
     where: { id: "seed-maint-1" },
-    update: {},
+    update: { tenantId: tenant.id, propertyId: property.id },
     create: {
       id: "seed-maint-1",
       tenantId: tenant.id,
@@ -166,7 +189,11 @@ async function main() {
 
   const maintenanceRequest2 = await prisma.maintenanceRequest.upsert({
     where: { id: "seed-maint-2" },
-    update: {},
+    update: {
+      tenantId: tenant.id,
+      propertyId: property.id,
+      assignedWorkerId: workerUser.id,
+    },
     create: {
       id: "seed-maint-2",
       tenantId: tenant.id,
@@ -182,7 +209,7 @@ async function main() {
 
   const maintenanceRequest3 = await prisma.maintenanceRequest.upsert({
     where: { id: "seed-maint-3" },
-    update: {},
+    update: { tenantId: tenant.id, propertyId: property2.id },
     create: {
       id: "seed-maint-3",
       tenantId: tenant.id,
@@ -195,7 +222,21 @@ async function main() {
     },
   });
 
-  console.log("✅ Seed complete");
+  const [propertyCount, workerCount, tenantCount, maintenanceCount] =
+    await Promise.all([
+      prisma.property.count({ where: { tenantId: tenant.id } }),
+      prisma.user.count({ where: { tenantId: tenant.id, role: "worker" } }),
+      prisma.user.count({ where: { tenantId: tenant.id, role: "tenant" } }),
+      prisma.maintenanceRequest.count({ where: { tenantId: tenant.id } }),
+    ]);
+
+  console.log("✅ Seed complete", {
+    tenantId: tenant.id,
+    properties: propertyCount,
+    workers: workerCount,
+    tenants: tenantCount,
+    maintenanceRequests: maintenanceCount,
+  });
 }
 
 main()
