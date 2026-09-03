@@ -32,6 +32,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PageHeader from '@/components/page-header';
 import { useTranslation } from '@/hooks/use-translation';
+import { useToast } from '@/hooks/use-toast';
 
 function getStatusClasses(status: string) {
   switch (status) {
@@ -65,6 +66,7 @@ export default function MaintenanceDetailPage() {
   const { user } = useCurrentUser();
   const { addNotification } = useNotifications();
   const { dict } = useTranslation();
+  const { toast } = useToast();
   const requestId = params.id as string;
   const lang = pathname.split('/')[1];
   
@@ -88,7 +90,14 @@ export default function MaintenanceDetailPage() {
   const [editablePriority, setEditablePriority] = useState("Low");
   const [workers, setWorkers] = useState<any[]>([]);
   const [workNotes, setWorkNotes] = useState('');
+  const [workHours, setWorkHours] = useState('');
+  const [workMinutes, setWorkMinutes] = useState('');
   const [workLogs, setWorkLogs] = useState<any[]>([]);
+  const [editingLogId, setEditingLogId] = useState<string | null>(null);
+  const [editNotes, setEditNotes] = useState('');
+  const [editHours, setEditHours] = useState('');
+  const [editMinutes, setEditMinutes] = useState('');
+  const [savingLog, setSavingLog] = useState(false);
   const [timerStartTime, setTimerStartTime] = useState<number | null>(null);
   const [totalTimeSpent, setTotalTimeSpent] = useState(0);
 
@@ -342,73 +351,101 @@ export default function MaintenanceDetailPage() {
 
   const handleSaveNotes = async () => {
     if (!workNotes.trim()) return;
-    
+
+    const timeSpent = (parseInt(workHours, 10) || 0) * 3600 + (parseInt(workMinutes, 10) || 0) * 60;
+
+    setSavingLog(true);
     try {
-      // Create work log entry
-      const workLogData = {
-        notes: workNotes,
-        requestId: request.id,
-        userId: user?.id,
-        userName: user?.name || 'Unknown User'
-      };
-      
-      // In a real implementation, save to database via API
       const response = await fetch(`/api/maintenance-requests/${requestId}/work-logs`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-tenant-id': user?.tenantId || 'default-tenant',
         },
-        body: JSON.stringify(workLogData),
+        body: JSON.stringify({ notes: workNotes, timeSpent }),
       });
-      
-      if (response.ok) {
-        // Add to local state for immediate UI update
-        const newLog = {
-          id: Date.now().toString(),
-          notes: workNotes,
-          timestamp: new Date().toLocaleString(),
-          userId: user?.id,
-          userName: user?.name || 'Unknown User'
-        };
-        
-        setWorkLogs(prev => [...prev, newLog]);
-        setWorkNotes('');
-        
-        addNotification({
-          role: 'worker',
-          icon: 'CheckCircle',
-          title: dict?.maintenance?.notifications?.workLogSavedTitle || 'Work Log Saved',
-          description: dict?.maintenance?.notifications?.workLogSavedDescription || 'Your work notes have been recorded successfully.'
-        });
-      } else {
-        // Fallback: just add to local state if API fails
-        const newLog = {
-          id: Date.now().toString(),
-          notes: workNotes,
-          timestamp: new Date().toLocaleString(),
-          userId: user?.id,
-          userName: user?.name || 'Unknown User'
-        };
-        
-        setWorkLogs(prev => [...prev, newLog]);
-        setWorkNotes('');
-        console.warn('Work log API failed, saved locally only');
+
+      if (!response.ok) {
+        throw new Error('Failed to save work log');
       }
+
+      const result = await response.json();
+      setWorkLogs(prev => [result.data, ...prev]);
+      setWorkNotes('');
+      setWorkHours('');
+      setWorkMinutes('');
+
+      addNotification({
+        role: 'worker',
+        icon: 'CheckCircle',
+        title: dict?.maintenance?.notifications?.workLogSavedTitle || 'Work Log Saved',
+        description: dict?.maintenance?.notifications?.workLogSavedDescription || 'Your work notes have been recorded successfully.'
+      });
     } catch (error) {
       console.error('Failed to save notes:', error);
-      // Fallback: add to local state anyway
-      const newLog = {
-        id: Date.now().toString(),
-        notes: workNotes,
-        timestamp: new Date().toLocaleString(),
-        userId: user?.id,
-        userName: user?.name || 'Unknown User'
-      };
-      
-      setWorkLogs(prev => [...prev, newLog]);
-      setWorkNotes('');
+      toast({
+        title: dict?.maintenance?.workLogSaveFailed || 'Failed to save work log',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingLog(false);
     }
+  };
+
+  const startEditLog = (log: any) => {
+    setEditingLogId(log.id);
+    setEditNotes(log.notes);
+    setEditHours(String(Math.floor((log.timeSpent || 0) / 3600)));
+    setEditMinutes(String(Math.floor(((log.timeSpent || 0) % 3600) / 60)));
+  };
+
+  const cancelEditLog = () => {
+    setEditingLogId(null);
+    setEditNotes('');
+    setEditHours('');
+    setEditMinutes('');
+  };
+
+  const handleUpdateWorkLog = async () => {
+    if (!editingLogId || !editNotes.trim()) return;
+
+    const timeSpent = (parseInt(editHours, 10) || 0) * 3600 + (parseInt(editMinutes, 10) || 0) * 60;
+
+    setSavingLog(true);
+    try {
+      const response = await fetch(`/api/maintenance-requests/${requestId}/work-logs/${editingLogId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-tenant-id': user?.tenantId || 'default-tenant',
+        },
+        body: JSON.stringify({ notes: editNotes, timeSpent }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update work log');
+      }
+
+      const result = await response.json();
+      setWorkLogs(prev => prev.map((log) => (log.id === editingLogId ? result.data : log)));
+      cancelEditLog();
+      toast({ title: dict?.maintenance?.workLogUpdated || 'Work log updated' });
+    } catch (error) {
+      console.error('Failed to update work log:', error);
+      toast({
+        title: dict?.maintenance?.workLogUpdateFailed || 'Failed to update work log',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingLog(false);
+    }
+  };
+
+  const formatLoggedDuration = (totalSeconds: number) => {
+    const hours = Math.floor((totalSeconds || 0) / 3600);
+    const minutes = Math.floor(((totalSeconds || 0) % 3600) / 60);
+    if (hours === 0 && minutes === 0) return null;
+    return `${hours > 0 ? `${hours}h ` : ''}${minutes}m`;
   };
 
   const handleStartTimer = async () => {
@@ -454,35 +491,21 @@ export default function MaintenanceDetailPage() {
     try {
       // Save time log when stopping timer
       if (sessionTime > 0) {
-        const timeLog = {
-          notes: `Worked for ${formatTime(sessionTime)} on this request`,
-          requestId: request.id,
-          userId: user?.id,
-          userName: user?.name || 'Unknown User',
-          timeSpent: sessionTime
-        };
-        
-        // Save time log to work logs
         const response = await fetch(`/api/maintenance-requests/${requestId}/work-logs`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'x-tenant-id': user?.tenantId || 'default-tenant',
           },
-          body: JSON.stringify(timeLog),
+          body: JSON.stringify({
+            notes: (dict?.maintenance?.workedForTemplate || 'Worked for {time} on this request').replace('{time}', formatTime(sessionTime)),
+            timeSpent: sessionTime,
+          }),
         });
-        
+
         if (response.ok) {
-          const newLog = {
-            id: Date.now().toString(),
-            notes: timeLog.notes,
-            timestamp: new Date().toLocaleDateString('de-DE') + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            userId: user?.id,
-            userName: user?.name || 'Unknown User',
-            timeSpent: sessionTime
-          };
-          
-          setWorkLogs(prev => [...prev, newLog]);
+          const result = await response.json();
+          setWorkLogs(prev => [result.data, ...prev]);
         }
       }
       
@@ -739,17 +762,78 @@ export default function MaintenanceDetailPage() {
                 {/* Existing Work Logs */}
                 {workLogs.length > 0 && (
                   <div className="space-y-3 mb-6">
-                    {workLogs.map((log) => (
-                      <div key={log.id} className="bg-muted rounded p-4 border">
-                        <p className="text-sm mb-2">{log.notes}</p>
-                        <p className="text-muted-foreground text-xs">
-                          {log.timestamp} - {log.userName}
-                        </p>
-                      </div>
-                    ))}
+                    {workLogs.map((log) => {
+                      const canEditLog = log.userId === user?.id || isAdmin;
+                      const duration = formatLoggedDuration(log.timeSpent);
+                      if (editingLogId === log.id) {
+                        return (
+                          <div key={log.id} className="bg-muted rounded p-4 border space-y-3">
+                            <Textarea
+                              value={editNotes}
+                              onChange={(e) => setEditNotes(e.target.value)}
+                              rows={3}
+                              className="resize-none bg-background"
+                            />
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  value={editHours}
+                                  onChange={(e) => setEditHours(e.target.value)}
+                                  className="w-16 bg-background"
+                                />
+                                <span className="text-xs text-muted-foreground">{dict?.maintenance?.hours || "Hours"}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  max={59}
+                                  value={editMinutes}
+                                  onChange={(e) => setEditMinutes(e.target.value)}
+                                  className="w-16 bg-background"
+                                />
+                                <span className="text-xs text-muted-foreground">{dict?.maintenance?.minutes || "Minutes"}</span>
+                              </div>
+                            </div>
+                            <div className="flex justify-end gap-2">
+                              <Button variant="ghost" size="sm" onClick={cancelEditLog} disabled={savingLog}>
+                                {dict?.common?.cancel || "Cancel"}
+                              </Button>
+                              <Button size="sm" onClick={handleUpdateWorkLog} disabled={savingLog || !editNotes.trim()}>
+                                {dict?.maintenance?.saveWorkLog || "Save"}
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div key={log.id} className="bg-muted rounded p-4 border">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm mb-2">{log.notes}</p>
+                            {canEditLog && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 shrink-0 -mt-1"
+                                onClick={() => startEditLog(log)}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                                <span className="sr-only">{dict?.maintenance?.editWorkLog || "Edit"}</span>
+                              </Button>
+                            )}
+                          </div>
+                          <p className="text-muted-foreground text-xs">
+                            {log.timestamp} - {log.userName}
+                            {duration && ` - ${duration}`}
+                          </p>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
-                
+
                 {/* Notes Input - Only for assigned worker or admin */}
                 {(isAssignedToMe || (isAdmin && request.assignedWorkerId === user?.id)) && (
                   <div className="space-y-4">
@@ -762,10 +846,36 @@ export default function MaintenanceDetailPage() {
                       className="resize-none"
                   />
 
+                  <div className="flex flex-wrap items-end gap-4">
+                    <div className="flex items-center gap-1">
+                      <Label className="text-xs text-muted-foreground">{dict?.maintenance?.hours || "Hours"}</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={workHours}
+                        onChange={(e) => setWorkHours(e.target.value)}
+                        placeholder="0"
+                        className="w-16"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Label className="text-xs text-muted-foreground">{dict?.maintenance?.minutes || "Minutes"}</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={59}
+                        value={workMinutes}
+                        onChange={(e) => setWorkMinutes(e.target.value)}
+                        placeholder="0"
+                        className="w-16"
+                      />
+                    </div>
+                  </div>
+
                   <div className="flex justify-end">
                     <Button
                       onClick={handleSaveNotes}
-                      disabled={!workNotes.trim()}
+                      disabled={!workNotes.trim() || savingLog}
                       className="bg-teal-600 text-white hover:bg-teal-700"
                     >
                       {dict?.maintenance?.addWorkLog || "Add Work Log"}

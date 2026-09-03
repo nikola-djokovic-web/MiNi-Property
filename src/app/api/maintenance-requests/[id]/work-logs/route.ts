@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/server/db';
 import { getSessionUser } from '@/lib/auth';
+import { loadRequestForUser } from './_shared';
 
 function formatTimestamp(date: Date) {
   return (
@@ -15,17 +16,6 @@ const createWorkLogSchema = z.object({
   notes: z.string().trim().min(1).max(5000),
   timeSpent: z.number().int().min(0).max(24 * 60 * 60).optional(),
 });
-
-async function loadRequestForUser(requestId: string, user: { tenantId: string; role: string; id: string }) {
-  const maintenanceRequest = await prisma.maintenanceRequest.findFirst({
-    where: { id: requestId, tenantId: user.tenantId },
-  });
-  if (!maintenanceRequest) return null;
-  if (user.role === 'worker' && maintenanceRequest.assignedWorkerId !== user.id) {
-    return null;
-  }
-  return maintenanceRequest;
-}
 
 export async function GET(
   request: NextRequest,

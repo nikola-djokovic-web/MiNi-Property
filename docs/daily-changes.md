@@ -190,11 +190,38 @@ Potvrđeno snimcima ekrana (headless Chrome, mobilna i desktop emulacija) — mo
 
 ---
 
+## 5. Radnik može ručno da unese i ispravi utrošeno vreme
+
+Radnik je do sada mogao da zabeleži vreme na zahtevu za održavanje samo preko tajmera uživo (start/stop) — ručna beleška nikad nije nosila vreme, i nijedan unos se nije mogao naknadno ispraviti.
+
+- Na formi za dodavanje beleške dodata polja "Sati" i "Minuti" — radnik sada može ručno da upiše utrošeno vreme bez pokretanja tajmera.
+- Svaki unos u radnom dnevniku dobio je dugme za izmenu (vidljivo vlasniku unosa ili adminu) koje otvara formu za korekciju beleške i vremena.
+- Nova API ruta `PATCH /api/maintenance-requests/[id]/work-logs/[logId]` sa istim pravilima pristupa kao ostatak sistema (radnik samo svoje unose, admin/owner bilo koji), deljena provera pristupa izdvojena u `_shared.ts`.
+- Usput ispravljen pre-postojeći bag: i ručno dodavanje beleške i tajmer-generisani unosi su u UI-ju koristili izmišljen privremeni ID (`Date.now()`) umesto pravog ID-ja vraćenog sa servera — što bi onemogućilo izmenu unosa odmah nakon kreiranja, pre osvežavanja stranice.
+
+Potvrđeno uživo: ručno uneto "1h 30m" ispravljeno na "2h 15m" preko forme za izmenu, promena ostala nakon osvežavanja stranice.
+
+---
+
+## 6. Logo na login stranici
+
+Korisnik je dodao zvanične MiNi Property logo slike (`public/assets/`, svetla i tamna varijanta) i tražio da se iskoriste kao logo na login stranici umesto generičke ikonice.
+
+- Login stranica sada prikazuje pravu logo sliku, sa automatskim prebacivanjem svetla/tamna verzija prema trenutnoj temi (`next-themes`, sa `mounted` čuvarem protiv hidratacionog mismatch-a).
+- Na zahtev korisnika logo je znatno uvećan (sa ~64px na 112–128px visine), dodata animacija ulaska (fade + zoom), blagi kontinuirani "float" pokret (nova Tailwind `float` animacija u `tailwind.config.ts`) i mek ljubičasti glow iza logoa.
+- Usput ispravljen pravi bag: labele za email/lozinku i dugme za prijavu na login stranici su tražile pogrešne ključeve rečnika (`email`/`password`/`signIn` umesto stvarnih `emailLabel`/`passwordLabel`/`loginButton`) pa se nikad nisu prevodile na nemački.
+
+Boja iz logoa je identifikovana kao `#7C3AED` (ljubičasta) — različita je od `--primary` boje aplikacije (teal `#328378`), pa glow efekat iza logoa trenutno koristi teal nijansu umesto tačne boje logoa (svesna napomena, nije greška).
+
+---
+
 ## Provera
 
 - `npx tsc --noEmit`, `npm run build`, `npx vitest run` (18/18) — bez novih grešaka nakon svih izmena.
 - Headless Chrome (CDP) sa simuliranim pravim klikovima miša: prijava, klik na prekidač jezika, provera da se tabela, zaglavlje, dashboard i dijalog za pretragu stvarno prebacuju na nemački — ne samo statički HTML pri direktnoj poseti, već i posle klijentske navigacije.
 - Snimci ekrana u mobilnoj (390×844) i desktop (1400×900) emulaciji pre/posle redizajna zaglavlja.
+- Ručna izmena work-log unosa testirana preko CDP-a (popunjavanje forme, potvrda u bazi preko GET rute, osvežavanje stranice).
+- Screenshot login logoa u oba theme-a (svetla/tamna) posle uvećanja i animacije.
 
 ---
 

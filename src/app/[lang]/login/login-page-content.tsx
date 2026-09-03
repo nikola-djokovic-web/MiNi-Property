@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Building } from "lucide-react";
+import { useTheme } from "next-themes";
+import Image from "next/image";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,12 @@ export default function LoginPageContent() {
   const lang = pathname.split("/")[1] || "en";
   const router = useRouter();
   const { login } = useCurrentUser();
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,12 +33,12 @@ export default function LoginPageContent() {
 
   // Safe access with type assertion and fallbacks
   const loginData = (dict as any)?.login;
-  const title = loginData?.title || "Sign In";
+  const title = loginData?.title || "MiNi Property";
   const description =
     loginData?.description || "Welcome back! Please sign in to your account.";
-  const emailLabel = loginData?.email || "Email";
-  const passwordLabel = loginData?.password || "Password";
-  const signInButton = loginData?.signIn || "Sign In";
+  const emailLabel = loginData?.emailLabel || "Email";
+  const passwordLabel = loginData?.passwordLabel || "Password";
+  const signInButton = loginData?.loginButton || "Sign In";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,10 +93,28 @@ export default function LoginPageContent() {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-md space-y-6 p-6">
         <div className="text-center space-y-2">
-          <div className="flex justify-center">
-            <Building className="h-6 w-6" />
+          <div className="relative flex justify-center py-2">
+            {mounted ? (
+              <>
+                <div
+                  className="absolute inset-0 mx-auto h-40 w-40 animate-pulse rounded-full bg-primary/25 blur-3xl"
+                  aria-hidden="true"
+                />
+                <div className="relative animate-float">
+                  <Image
+                    src={resolvedTheme === "dark" ? "/assets/MiNi-Property-logo-dark.png" : "/assets/MiNi-Property-logo-light.png"}
+                    alt={title}
+                    width={1590}
+                    height={720}
+                    priority
+                    className="h-28 w-auto animate-in zoom-in-90 fade-in rounded-2xl shadow-2xl shadow-primary/20 duration-700 sm:h-32"
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="h-28 w-[247px] sm:h-32 sm:w-[283px]" />
+            )}
           </div>
-          <h1 className="text-3xl font-bold text-foreground">{title}</h1>
           <p className="text-muted-foreground mt-1">{description}</p>
         </div>
         <Card>
