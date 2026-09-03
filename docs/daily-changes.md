@@ -218,6 +218,11 @@ Boja iz logoa je identifikovana kao `#7C3AED` (ljubičasta) — različita je od
 ## Provera
 
 - `npx tsc --noEmit`, `npm run build`, `npx vitest run` (18/18) — bez novih grešaka nakon svih izmena.
+
+## 7. Tematske boje
+
+- Dodat je imenovani **MiNi Purple** preset u boji logoa, postavljen kao podrazumevani.
+- Izabrana tema se čuva u `localStorage` i automatski vraća nakon osvežavanja ili ponovnog otvaranja aplikacije; izbor ostalih tema ostaje dostupan.
 - Headless Chrome (CDP) sa simuliranim pravim klikovima miša: prijava, klik na prekidač jezika, provera da se tabela, zaglavlje, dashboard i dijalog za pretragu stvarno prebacuju na nemački — ne samo statički HTML pri direktnoj poseti, već i posle klijentske navigacije.
 - Snimci ekrana u mobilnoj (390×844) i desktop (1400×900) emulaciji pre/posle redizajna zaglavlja.
 - Ručna izmena work-log unosa testirana preko CDP-a (popunjavanje forme, potvrda u bazi preko GET rute, osvežavanje stranice).
@@ -229,4 +234,3 @@ Boja iz logoa je identifikovana kao `#7C3AED` (ljubičasta) — različita je od
 
 - Notifikacije koje se generišu unutar detaljne stranice zahteva za održavanje (npr. "Zahtev dodeljen", "Rad započet") sada koriste rečnik, ali same notifikacije koje su ranije kreirane u bazi (pre ove sesije) ostaju na jeziku na kom su originalno sačuvane — tekst notifikacije se ne prevodi retroaktivno.
 
-test tekst
