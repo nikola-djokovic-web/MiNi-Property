@@ -169,10 +169,32 @@ Popravka: obrisan zaostali `.tsx` fajl; ispravljen jedini fajl (`login-page-cont
 
 ---
 
+## 3. Dashboard, zaglavlje i pretraga nisu bili prevedeni
+
+Korisnik je primetio da dashboard, pretraga u zaglavlju i "ostali dugmići" ostaju na engleskom uprkos prethodnoj lokalizaciji. Pregledom je otkriveno da je uzrok drugačiji na svakom mestu:
+
+- **Dashboard** je imao sopstveni, lažni `useTranslation()` (definisan lokalno u fajlu, hardkodovan samo na engleskom) koji nije imao nikakve veze sa pravim rečnikom — pozivan je čak i van komponente, na nivou modula. Zamenjen pravim hook-om; ostatak hardkodovanih stringova (zaglavlja tabele, stanja učitavanja/praznine, bedž statusa, "Resident of...") prebačen na rečnik.
+- **Zaglavlje aplikacije** (prekidač teme, prekidač jezika, zvono za notifikacije, meni naloga, dugme "Nova prijava") i **dijalog za pretragu** nikad nisu bili povezani sa rečnikom — jednostavno nisu bili obrađeni u prethodnom prolazu. Dodati u rečnik i povezani.
+
+Potvrđeno uživo (headless Chrome, simulirani klikovi) da se dashboard, zaglavlje, meni naloga i dijalog za pretragu sada u potpunosti prebacuju na nemački.
+
+---
+
+## 4. Redizajn mobilnog zaglavlja
+
+Korisnik je poslao snimak ekrana mobilne verzije i pitao da li je zaglavlje dobro dizajnirano. Zaglavlje je imalo 7 sitnih dugmića zbijenih u jedan red (meni, pretraga, dodaj, svetla/tamna tema, jezik, notifikacije, avatar) — bez teksta, teško za pogoditi prstom, sa sekundarnim akcijama (tema, jezik) na istom mestu kao primarne (pretraga, notifikacije).
+
+Prekidač teme i prekidač jezika premešteni iz stalno vidljivog reda dugmića u meni ispod avatara (sa kvačicom koja pokazuje aktivan izbor) — ali **samo na mobilnim širinama** (`sm:hidden` na dodatim stavkama menija, `hidden sm:flex` na originalnim dugmićima). Desktop prikaz ostaje potpuno nepromenjen. Mobilno zaglavlje sada ima 5 dugmića umesto 7.
+
+Potvrđeno snimcima ekrana (headless Chrome, mobilna i desktop emulacija) — mobilni red je vidno rasterećen, meni naloga sadrži nove stavke sa ispravnim kvačicama, desktop identičan kao pre.
+
+---
+
 ## Provera
 
 - `npx tsc --noEmit`, `npm run build`, `npx vitest run` (18/18) — bez novih grešaka nakon svih izmena.
 - Headless Chrome (CDP) sa simuliranim pravim klikovima miša: prijava, klik na prekidač jezika, provera da se tabela, zaglavlje, dashboard i dijalog za pretragu stvarno prebacuju na nemački — ne samo statički HTML pri direktnoj poseti, već i posle klijentske navigacije.
+- Snimci ekrana u mobilnoj (390×844) i desktop (1400×900) emulaciji pre/posle redizajna zaglavlja.
 
 ---
 

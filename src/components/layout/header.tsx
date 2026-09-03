@@ -356,6 +356,15 @@ export default function AppHeader() {
   const { user, logout } = useCurrentUser();
   const router = useRouter();
   const pathname = usePathname();
+  const { setTheme, theme } = useTheme();
+  const currentLang = pathname.split('/')[1];
+
+  const getPathForLocale = (locale: string) => {
+    if (!pathname) return '/';
+    const segments = pathname.split('/');
+    segments[1] = locale;
+    return segments.join('/');
+  };
 
     const handleLogout = async () => {
         await fetch('/api/auth/logout', { method: 'POST' });
@@ -392,8 +401,10 @@ export default function AppHeader() {
           </Button>
         </div>
         <CreateMaintenanceRequestButton />
-        <ThemeSwitcher />
-        <LanguageSwitcher />
+        <div className="hidden items-center gap-2 sm:flex">
+          <ThemeSwitcher />
+          <LanguageSwitcher />
+        </div>
         <Notifications />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -426,6 +437,31 @@ export default function AppHeader() {
                 {dict?.header?.profile || "Profile"}
               </Link>
             </DropdownMenuItem>
+            {/* Theme + language live here on mobile only - the standalone
+                controls in the header are hidden below the sm breakpoint
+                to keep the mobile top bar from being icon-crowded. */}
+            <DropdownMenuSeparator className="sm:hidden" />
+            <DropdownMenuItem className="sm:hidden" onClick={() => setTheme('light')}>
+              <Sun className="mr-2 h-4 w-4" />
+              {dict?.header?.lightMode || "Light mode"}
+              {theme === 'light' && <Check className="ml-auto h-4 w-4" />}
+            </DropdownMenuItem>
+            <DropdownMenuItem className="sm:hidden" onClick={() => setTheme('dark')}>
+              <Moon className="mr-2 h-4 w-4" />
+              {dict?.header?.darkMode || "Dark mode"}
+              {theme === 'dark' && <Check className="ml-auto h-4 w-4" />}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="sm:hidden" />
+            {i18n.locales.map((locale) => (
+              <DropdownMenuItem key={locale} className="sm:hidden" asChild>
+                <Link href={getPathForLocale(locale)}>
+                  <Languages className="mr-2 h-4 w-4" />
+                  {locale.toUpperCase()}
+                  {currentLang === locale && <Check className="ml-auto h-4 w-4" />}
+                </Link>
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>{dict?.header?.logout || "Logout"}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
