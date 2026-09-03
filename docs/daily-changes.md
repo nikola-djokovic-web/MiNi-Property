@@ -228,3 +228,5 @@ Boja iz logoa je identifikovana kao `#7C3AED` (ljubičasta) — različita je od
 ## Napomena o obimu (sesija od 3. septembra)
 
 - Notifikacije koje se generišu unutar detaljne stranice zahteva za održavanje (npr. "Zahtev dodeljen", "Rad započet") sada koriste rečnik, ali same notifikacije koje su ranije kreirane u bazi (pre ove sesije) ostaju na jeziku na kom su originalno sačuvane — tekst notifikacije se ne prevodi retroaktivno.
+
+test tekst
