@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma, UserRole } from "@prisma/client";
+import type { Prisma, UserRole } from "@prisma/client";
 import { prisma } from "@/server/db";
 import { getSessionUser } from "@/lib/auth";
 
-const USER_ROLES = Object.values(UserRole) as string[];
+const USER_ROLES = ["admin", "owner", "worker", "tenant"] as const satisfies readonly UserRole[];
 
 const USER_SEARCH_SELECT = {
   id: true,
@@ -80,7 +80,9 @@ export async function GET(req: NextRequest) {
             { email: { contains: query, mode: 'insensitive' } },
             // role is an enum, not free text - only match it if the query
             // is itself a valid role name (e.g. searching "admin").
-            ...(USER_ROLES.includes(query) ? [{ role: query as UserRole }] : []),
+            ...(USER_ROLES.includes(query as (typeof USER_ROLES)[number])
+              ? [{ role: query as UserRole }]
+              : []),
           ] as Prisma.UserWhereInput[],
         },
         select: USER_SEARCH_SELECT,
