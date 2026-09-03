@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { apiSend } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
 import { PlusCircle } from "lucide-react";
 
 const TENANT_ID = process.env.NEXT_PUBLIC_DEMO_TENANT_ID ?? "";
@@ -52,6 +53,7 @@ export default function AddTenantDialog({
   onAddTenant: (tenant: any) => void;
 }) {
   const { toast } = useToast();
+  const { dict } = useTranslation();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -75,8 +77,10 @@ export default function AddTenantDialog({
       await onAddTenant(newTenant);
 
       toast({
-        title: "Tenant Invited Successfully",
-        description: `Invitation sent to ${values.email} for ${assignedProperty?.title || "the selected property"}.`,
+        title: dict?.tenants?.invitedSuccessTitle || "Tenant Invited Successfully",
+        description: (dict?.tenants?.invitedSuccessDescription || "Invitation sent to {email} for {property}.")
+          .replace("{email}", values.email)
+          .replace("{property}", assignedProperty?.title || "the selected property"),
         variant: "default",
         className: "bg-green-50 border-green-200 text-green-900",
       });
@@ -87,7 +91,7 @@ export default function AddTenantDialog({
       const msg = err?.message || "Failed to invite tenant";
       form.setError("root", { message: msg });
       toast({
-        title: "Invitation Failed",
+        title: dict?.tenants?.invitationFailed || "Invitation Failed",
         description: msg,
         variant: "destructive",
       });
@@ -107,14 +111,14 @@ export default function AddTenantDialog({
       <DialogTrigger asChild>
         <Button>
           <PlusCircle className="mr-2 h-4 w-4" />
-          Add Tenant
+          {dict?.tenants?.addTenant || "Add Tenant"}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Invite New Tenant</DialogTitle>
+          <DialogTitle>{dict?.tenants?.inviteNewTenant || "Invite New Tenant"}</DialogTitle>
           <DialogDescription>
-            Enter the tenant's details and assign them to a property. They will receive an invitation email to complete their registration.
+            {dict?.tenants?.inviteDescription || "Enter the tenant's details and assign them to a property. They will receive an invitation email to complete their registration."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -124,7 +128,7 @@ export default function AddTenantDialog({
               name="name"
               render={({ field }) => (
                 <FormItem className="grid grid-cols-4 items-center gap-4 space-y-0">
-                  <FormLabel className="text-right">Name</FormLabel>
+                  <FormLabel className="text-right">{dict?.common?.name || "Name"}</FormLabel>
                   <div className="col-span-3">
                     <FormControl>
                       <Input placeholder="e.g. John Doe" {...field} />
@@ -139,7 +143,7 @@ export default function AddTenantDialog({
               name="email"
               render={({ field }) => (
                 <FormItem className="grid grid-cols-4 items-center gap-4 space-y-0">
-                  <FormLabel className="text-right">Email</FormLabel>
+                  <FormLabel className="text-right">{dict?.common?.email || "Email"}</FormLabel>
                   <div className="col-span-3">
                     <FormControl>
                       <Input type="email" placeholder="e.g. john@example.com" {...field} />
@@ -154,12 +158,12 @@ export default function AddTenantDialog({
               name="propertyId"
               render={({ field }) => (
                 <FormItem className="grid grid-cols-4 items-center gap-4 space-y-0">
-                  <FormLabel className="text-right">Property</FormLabel>
+                  <FormLabel className="text-right">{dict?.common?.property || "Property"}</FormLabel>
                   <div className="col-span-3">
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Assign to property" />
+                          <SelectValue placeholder={dict?.tenants?.propertyPlaceholder || "Assign to property"} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -182,7 +186,7 @@ export default function AddTenantDialog({
             )}
             <DialogFooter>
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Sending Invite..." : "Send Invitation"}
+                {submitting ? (dict?.tenants?.sendingInvite || "Sending Invite...") : (dict?.tenants?.sendInvitation || "Send Invitation")}
               </Button>
             </DialogFooter>
           </form>

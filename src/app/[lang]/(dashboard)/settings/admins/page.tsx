@@ -24,6 +24,7 @@ import { usePathname } from "next/navigation";
 import AddAdminDialog from "@/components/admins/add-admin-dialog";
 import DeleteUserDialog from "@/components/workers/delete-user-dialog";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useTranslation } from "@/hooks/use-translation";
 
 const TENANT_ID = process.env.NEXT_PUBLIC_DEMO_TENANT_ID ?? "";
 
@@ -33,6 +34,7 @@ export default function AdminsPage() {
   const { user } = useCurrentUser();
   const pathname = usePathname();
   const { toast } = useToast();
+  const { dict } = useTranslation();
   const [admins, setAdmins] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -69,8 +71,8 @@ export default function AdminsPage() {
     } catch (error) {
       console.error("Error fetching admins:", error);
       toast({
-        title: "Error",
-        description: "Failed to load administrators",
+        title: dict?.common?.error || "Error",
+        description: dict?.settings?.admins?.loadFailed || "Failed to load administrators",
         variant: "destructive",
       });
       // Set empty array on error so we show "no administrators" instead of infinite loading
@@ -87,8 +89,8 @@ export default function AdminsPage() {
   const handleAddAdmin = async (adminData: any) => {
     await fetchAdmins(); // Refresh the list
     toast({
-      title: "Admin Invited",
-      description: `Invitation sent to ${adminData.email}`,
+      title: dict?.settings?.admins?.adminInvited || "Admin Invited",
+      description: (dict?.settings?.admins?.adminInvitedDescription || "Invitation sent to {email}").replace("{email}", adminData.email),
       variant: "default",
       className: "bg-green-50 border-green-200 text-green-900",
     });
@@ -99,15 +101,15 @@ export default function AdminsPage() {
       await apiSend(`/api/admins?id=${adminId}`, "DELETE", {}, TENANT_ID);
       await fetchAdmins(); // Refresh the list
       toast({
-        title: "Admin Removed",
-        description: "Administrator has been removed successfully",
+        title: dict?.settings?.admins?.adminRemoved || "Admin Removed",
+        description: dict?.settings?.admins?.adminRemovedDescription || "Administrator has been removed successfully",
         variant: "default",
         className: "bg-green-50 border-green-200 text-green-900",
       });
     } catch (error) {
       toast({
-        title: "Error", 
-        description: "Failed to remove administrator",
+        title: dict?.common?.error || "Error",
+        description: dict?.settings?.admins?.removeFailed || "Failed to remove administrator",
         variant: "destructive",
       });
     }
@@ -116,9 +118,9 @@ export default function AdminsPage() {
   const getStatusBadge = (admin: any) => {
     const hasPassword = admin.passwordHash;
     if (hasPassword) {
-      return <Badge className="bg-green-100 text-green-800">Active</Badge>;
+      return <Badge className="bg-green-100 text-green-800">{dict?.common?.active || "Active"}</Badge>;
     } else {
-      return <Badge variant="secondary">Pending</Badge>;
+      return <Badge variant="secondary">{dict?.common?.pending || "Pending"}</Badge>;
     }
   };
 
@@ -126,8 +128,8 @@ export default function AdminsPage() {
     <TooltipProvider>
       <div className="flex flex-col gap-6">
         <PageHeader
-          title="Administrators"
-          description="Manage administrator accounts and permissions."
+          title={dict?.settings?.admins?.title || "Administrators"}
+          description={dict?.settings?.admins?.description || "Manage administrator accounts for your organization."}
         >
           <AddAdminDialog onAddAdmin={handleAddAdmin} />
         </PageHeader>
@@ -136,10 +138,10 @@ export default function AdminsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{dict?.common?.name || "Name"}</TableHead>
+                <TableHead>{dict?.common?.email || "Email"}</TableHead>
+                <TableHead>{dict?.common?.status || "Status"}</TableHead>
+                <TableHead className="text-right">{dict?.common?.actions || "Actions"}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -149,7 +151,7 @@ export default function AdminsPage() {
                     colSpan={4}
                     className="py-8 text-center text-muted-foreground"
                   >
-                    Loading administrators…
+                    {dict?.settings?.admins?.loading || "Loading administrators…"}
                   </TableCell>
                 </TableRow>
               ) : admins.length === 0 ? (
@@ -158,7 +160,7 @@ export default function AdminsPage() {
                     colSpan={4}
                     className="py-8 text-center text-muted-foreground"
                   >
-                    No administrators found.
+                    {dict?.settings?.admins?.noAdminsYet || "No administrators yet."}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -176,7 +178,7 @@ export default function AdminsPage() {
                             {admin.name || "—"}
                           </span>
                           <span className="text-muted-foreground text-sm">
-                            Administrator
+                            {dict?.settings?.admins?.administratorRole || "Administrator"}
                           </span>
                         </div>
                       </div>

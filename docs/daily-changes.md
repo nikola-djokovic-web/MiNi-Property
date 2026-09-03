@@ -129,7 +129,53 @@ Dodate za dashboard rute (`src/app/[lang]/(dashboard)/loading.tsx`, `error.tsx`)
 
 Sledeće je svesno ostavljeno van ove sesije, uz razlog:
 
-- **Puna i18n pokrivenost** van navigacije (stanari, radnici, održavanje, podešavanja, dijalozi) — po eksplicitnoj odluci tokom sesije da se ostavi za kasnije.
+- **Puna i18n pokrivenost** van navigacije (stanari, radnici, održavanje, podešavanja, dijalozi) — po eksplicitnoj odluci tokom sesije da se ostavi za kasnije. *(Dovršeno u sesiji od 3. septembra 2026 — vidi ispod.)*
 - **In-memory skladištenje za SSE konekcije i notifikacije preko više instanci** — ostaje trenutno rešenje; puna arhitektonska promena (npr. Postgres LISTEN/NOTIFY) nosi rizik, a trenutni deploy cilj (`apphosting.yaml`, maxInstances: 1) i dalje radi na jednoj instanci.
 - **`npm audit` (124 ranjivosti)** — sve postojale i pre ove sesije, dolaze iz `genkit-cli` lanca zavisnosti; zahtevaju posebnu, pažljivo testiranu turu ažuriranja.
 - **Puna funkcija zakupa/rente** (Lease/Unit tok) i **dodela jednog radnika na više nekretnina istovremeno** — trenutna šema baze to ne podržava; zahteva novu poslovnu odluku o modelu podataka, ne samo popravku bag-a.
+
+---
+
+# Sesija: 3. septembar 2026.
+
+**Datum:** 3. septembar 2026. **Vreme:** 11:16 (CEST)
+
+Nastavak prethodne sesije: dovršena puna nemačka lokalizacija aplikacije (stavka ostavljena otvorenom prošli put) i otklonjen bag zbog kog prevod nije radio u pregledaču uprkos ispravnom serverskom renderovanju.
+
+---
+
+## 1. Puna nemačka (i18n) lokalizacija aplikacije
+
+Prevedeni preostali delovi aplikacije koji do sada nisu bili povezani sa rečnikom (`src/dictionaries/en.ts` i `de.ts`, sa TypeScript proverom strukturne usklađenosti između jezika):
+
+- Zahtevi za održavanje — lista (paginacija, tabovi, tabela) i detaljna stranica (status/dodela, radni nalozi, ćaskanje, notifikacije), oba dijaloga za kreiranje zahteva.
+- Stanari, radnici (uključujući profil radnika), nekretnine — dovršeni preostali dijalozi.
+- Dokumenti, profil naloga, podešavanja (kompanija, administratori, uloge, tema), AI generator i AI asistent, naplata kirije, obe varijante stranice za upravljanje nekretninama.
+- Glavna tabla (dashboard), zaglavlje aplikacije (prekidač teme, prekidač jezika, zvono za notifikacije, nalog meni, dugme "Nova prijava") i dijalog za pretragu — ovo je posebno provereno jer je izgledalo prevedeno, a nije bilo.
+
+Deo posla urađen paralelno kroz pozadinski agent (mehanički deo: dijalozi, dokumenti, profil, podešavanja, AI, kirija, upravljanje nekretninama), dok je detaljna stranica zahteva za održavanje i dashboard/zaglavlje urađeno ručno zbog složenosti.
+
+Usput otkrivena i ispravljena dva prava bag-a (ne prevod, već potpuno prazan prikaz): dugme "Add Work Log" i bedž statusa na detaljnoj stranici zahteva za održavanje nisu imali nikakav tekst, ni na engleskom.
+
+---
+
+## 2. Bag: prevod se nije menjao klikom na dugme za jezik
+
+Korisnik je prijavio da klik na "DE" u zaglavlju ne menja ništa. Uzrok pronađen headless-browser testom (CDP, simulirani pravi klik miša): server je ispravno slao nemački HTML, ali je u pregledaču odmah po hidrataciji tekst vraćan na engleski.
+
+Razlog: u projektu su postojala **dva fajla za isti import** — `src/hooks/use-translation.ts` (ispravan, prosleđuje pravi hook) i `src/hooks/use-translation.tsx` (zaostali duplikat sa sopstvenim, nikad povezanim kontekstom koji je uvek vraćao prazan objekat). Server-side render je koristio ispravan fajl, ali je klijentski JS paket razrešavao isti import na pogrešan — pa je svaka `dict?.x?.y || "fallback"` vrednost posle hidratacije padala na engleski fallback, bez obzira na URL (`/de/...`).
+
+Popravka: obrisan zaostali `.tsx` fajl; ispravljen jedini fajl (`login-page-content.tsx`) koji je bio napisan za pogrešan (ne-destrukturirani) oblik povratne vrednosti hook-a. Potvrđeno uživo (simulirani klik na "DE" dugme) da se sada cela stranica, uključujući tabelu i dinamičke podatke, odmah prebacuje na nemački.
+
+---
+
+## Provera
+
+- `npx tsc --noEmit`, `npm run build`, `npx vitest run` (18/18) — bez novih grešaka nakon svih izmena.
+- Headless Chrome (CDP) sa simuliranim pravim klikovima miša: prijava, klik na prekidač jezika, provera da se tabela, zaglavlje, dashboard i dijalog za pretragu stvarno prebacuju na nemački — ne samo statički HTML pri direktnoj poseti, već i posle klijentske navigacije.
+
+---
+
+## Napomena o obimu (sesija od 3. septembra)
+
+- Notifikacije koje se generišu unutar detaljne stranice zahteva za održavanje (npr. "Zahtev dodeljen", "Rad započet") sada koriste rečnik, ali same notifikacije koje su ranije kreirane u bazi (pre ove sesije) ostaju na jeziku na kom su originalno sačuvane — tekst notifikacije se ne prevodi retroaktivno.

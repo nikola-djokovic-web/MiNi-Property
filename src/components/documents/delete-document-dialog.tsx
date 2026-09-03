@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useTranslation } from '@/hooks/use-translation';
 
 export default function DeleteDocumentDialog({
   document,
@@ -24,12 +25,16 @@ export default function DeleteDocumentDialog({
   document: { id: string, name: string };
   onDelete: () => void;
 }) {
+  const { dict } = useTranslation();
   const [open, setOpen] = useState(false);
 
   const handleDelete = () => {
     onDelete();
     setOpen(false);
   };
+
+  const deleteDescriptionTemplate = dict?.documents?.deleteDocumentDescription || "This will permanently delete {name}.";
+  const [descBefore, descAfter] = deleteDescriptionTemplate.split("{name}");
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
@@ -38,26 +43,25 @@ export default function DeleteDocumentDialog({
           <AlertDialogTrigger asChild>
             <Button variant="ghost" size="icon">
               <Trash2 className="h-4 w-4 text-destructive" />
-              <span className="sr-only">Delete Document</span>
+              <span className="sr-only">{dict?.documents?.deleteDocument || "Delete Document"}</span>
             </Button>
           </AlertDialogTrigger>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Delete Document</p>
+          <p>{dict?.documents?.deleteDocument || "Delete Document"}</p>
         </TooltipContent>
       </Tooltip>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogTitle>{dict?.common?.confirmDeleteTitle || "Are you sure?"}</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete the
-            document <span className="font-semibold">{document.name}</span>.
+            {dict?.common?.confirmDeleteDescription || "This action cannot be undone."} {descBefore}<span className="font-semibold">{document.name}</span>{descAfter}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>{dict?.common?.cancel || "Cancel"}</AlertDialogCancel>
           <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
-            Yes, Delete
+            {dict?.common?.yesDelete || "Yes, Delete"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

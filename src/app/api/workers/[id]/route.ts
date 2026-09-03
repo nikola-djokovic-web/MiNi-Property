@@ -10,6 +10,70 @@ const updateWorkerSchema = z.object({
   email: z.string().trim().min(1, "Email is required").email("Enter a valid email address"),
 });
 
+export async function GET(req: NextRequest, { params }: Params) {
+  try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    const { id } = await params;
+    const tenantId = user.tenantId;
+
+    const worker = await prisma.user.findFirst({
+      where: { id, tenantId, role: "worker" },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        profileImage: true,
+        createdAt: true,
+      },
+    });
+    if (!worker) {
+      return NextResponse.json({ error: "Worker not found" }, { status: 404 });
+    }
+
+    const [properties, maintenanceRequests, workLogAgg] = await Promise.all([
+      prisma.property.findMany({
+        where: { tenantId, assignedWorkerId: id },
+        select: { id: true, name: true, title: true, address: true, city: true, imageUrl: true },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.maintenanceRequest.findMany({
+        where: { tenantId, assignedWorkerId: id },
+        select: {
+          id: true,
+          issue: true,
+          status: true,
+          priority: true,
+          dateSubmitted: true,
+          property: { select: { id: true, name: true, title: true } },
+        },
+        orderBy: { dateSubmitted: "desc" },
+      }),
+      prisma.workLog.aggregate({
+        where: { userId: id },
+        _sum: { timeSpent: true },
+        _count: { _all: true },
+      }),
+    ]);
+
+    const stats = {
+      assignedProperties: properties.length,
+      activeRequests: maintenanceRequests.filter((r) => r.status !== "Completed").length,
+      completedRequests: maintenanceRequests.filter((r) => r.status === "Completed").length,
+      totalTimeLoggedSeconds: workLogAgg._sum.timeSpent ?? 0,
+      workLogCount: workLogAgg._count._all,
+    };
+
+    return NextResponse.json({
+      data: { worker, properties, maintenanceRequests, stats },
+    });
+  } catch (e: any) {
+    console.error("GET /api/workers/[id] error:", e);
+    return NextResponse.json({ error: e?.message ?? "Internal error" }, { status: 500 });
+  }
+}
+
 export async function PUT(req: NextRequest, { params }: Params) {
   try {
     const user = await getSessionUser();

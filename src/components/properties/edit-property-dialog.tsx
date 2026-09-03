@@ -35,6 +35,7 @@ import { Property } from "@/lib/data";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import Image from "next/image";
 import { ScrollArea, ScrollBar } from "../ui/scroll-area";
+import { useTranslation } from "@/hooks/use-translation";
 
 // Keep in sync with the server-side schema in src/app/api/properties/[id]/route.ts
 const PROPERTY_TYPES = ["Apartment", "House", "Condo", "Townhouse", "Commercial"] as const;
@@ -55,6 +56,7 @@ export default function EditPropertyDialog({
   property: Property;
   onUpdateProperty: (property: any) => void;
 }) {
+  const { dict } = useTranslation();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [imagePreviews, setImagePreviews] = useState<string[]>(
@@ -115,19 +117,19 @@ export default function EditPropertyDialog({
           <DialogTrigger asChild>
             <Button variant="ghost" size="icon">
               <Pencil className="h-4 w-4" />
-              <span className="sr-only">Edit Property</span>
+              <span className="sr-only">{dict?.properties?.editProperty || "Edit Property"}</span>
             </Button>
           </DialogTrigger>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Edit Property</p>
+          <p>{dict?.properties?.editProperty || "Edit Property"}</p>
         </TooltipContent>
       </Tooltip>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Edit Property</DialogTitle>
+          <DialogTitle>{dict?.properties?.editProperty || "Edit Property"}</DialogTitle>
           <DialogDescription>
-            Update the details for {property.title}.
+            {(dict?.properties?.editPropertyDescription || "Update the details for {name}.").replace("{name}", property.title)}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -139,7 +141,7 @@ export default function EditPropertyDialog({
                   name="title"
                   render={({ field }) => (
                     <FormItem className="grid grid-cols-4 items-center gap-4 space-y-0">
-                      <FormLabel className="text-right">Title</FormLabel>
+                      <FormLabel className="text-right">{dict?.properties?.titleLabel || "Title"}</FormLabel>
                       <div className="col-span-3">
                         <FormControl>
                           <Input {...field} />
@@ -154,7 +156,7 @@ export default function EditPropertyDialog({
                   name="address"
                   render={({ field }) => (
                     <FormItem className="grid grid-cols-4 items-center gap-4 space-y-0">
-                      <FormLabel className="text-right">Address</FormLabel>
+                      <FormLabel className="text-right">{dict?.common?.address || "Address"}</FormLabel>
                       <div className="col-span-3">
                         <FormControl>
                           <Input {...field} />
@@ -169,7 +171,7 @@ export default function EditPropertyDialog({
                   name="city"
                   render={({ field }) => (
                     <FormItem className="grid grid-cols-4 items-center gap-4 space-y-0">
-                      <FormLabel className="text-right">City</FormLabel>
+                      <FormLabel className="text-right">{dict?.common?.city || "City"}</FormLabel>
                       <div className="col-span-3">
                         <FormControl>
                           <Input {...field} />
@@ -184,7 +186,7 @@ export default function EditPropertyDialog({
                   name="type"
                   render={({ field }) => (
                     <FormItem className="grid grid-cols-4 items-center gap-4 space-y-0">
-                      <FormLabel className="text-right">Type</FormLabel>
+                      <FormLabel className="text-right">{dict?.common?.type || "Type"}</FormLabel>
                       <div className="col-span-3">
                         <Select value={field.value} onValueChange={field.onChange}>
                           <FormControl>
@@ -206,13 +208,13 @@ export default function EditPropertyDialog({
                   )}
                 />
                 <div className="grid grid-cols-4 items-start gap-4">
-                  <FormLabel className="text-right pt-2">Photos</FormLabel>
+                  <FormLabel className="text-right pt-2">{dict?.properties?.photos || "Photos"}</FormLabel>
                   <div className="col-span-3">
                     <Input id="photo" type="file" accept="image/*" onChange={handleImageChange} multiple className="hidden" />
                     <Button asChild variant="outline">
                       <label htmlFor="photo" className="cursor-pointer">
                         <Upload className="mr-2 h-4 w-4" />
-                        Choose Images
+                        {dict?.properties?.chooseImages || "Choose Images"}
                       </label>
                     </Button>
                   </div>
@@ -252,7 +254,7 @@ export default function EditPropertyDialog({
             </div>
             <DialogFooter>
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Saving..." : "Save Changes"}
+                {submitting ? (dict?.common?.saving || "Saving...") : (dict?.common?.saveChanges || "Save Changes")}
               </Button>
             </DialogFooter>
           </form>

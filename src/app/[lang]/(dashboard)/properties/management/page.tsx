@@ -64,12 +64,14 @@ import DeletePropertyDialog from "@/components/properties/delete-property-dialog
 import { useNotifications } from "@/hooks/use-notifications";
 import { usePathname } from "next/navigation";
 import eventBus from "@/lib/events";
+import { useTranslation } from "@/hooks/use-translation";
 
 export default function PropertiesManagementPage() {
   const [properties, setProperties] = useState<any[]>([]);
   const [deletingProperties, setDeletingProperties] = useState<Set<string>>(new Set());
   const [workers, setWorkers] = useState<any[]>([]);
   const { addNotification } = useNotifications();
+  const { dict } = useTranslation();
   const pathname = usePathname();
   const lang = pathname.split("/")[1];
 
@@ -209,8 +211,8 @@ export default function PropertiesManagementPage() {
         addNotification({
           role: "worker",
           icon: Building,
-          title: "New Property Assignment",
-          description: `You have been assigned to ${propertyToUpdate.title}.`,
+          title: dict?.properties?.newAssignmentTitle || "New Property Assignment",
+          description: (dict?.properties?.newAssignmentDescription || "You have been assigned to {property}.").replace("{property}", propertyToUpdate.title),
         });
       }
     }
@@ -256,8 +258,8 @@ export default function PropertiesManagementPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Property Management"
-        description="Manage all properties in your portfolio."
+        title={dict?.nav?.propertyManagement || "Property Management"}
+        description={dict?.properties?.description || "Manage your properties and their maintenance requests."}
       >
         <AddPropertyDialog onAddProperty={handleAddProperty} />
       </PageHeader>
@@ -266,10 +268,10 @@ export default function PropertiesManagementPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Property</TableHead>
-                <TableHead className="hidden md:table-cell">Address</TableHead>
-                <TableHead>Assigned Worker</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{dict?.common?.property || "Property"}</TableHead>
+                <TableHead className="hidden md:table-cell">{dict?.common?.address || "Address"}</TableHead>
+                <TableHead>{dict?.common?.assignedTo || "Assigned Worker"}</TableHead>
+                <TableHead className="text-right">{dict?.common?.actions || "Actions"}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -298,7 +300,7 @@ export default function PropertiesManagementPage() {
                           />
                         ) : (
                           <div className="hidden h-16 w-16 rounded-md bg-muted sm:flex items-center justify-center text-[10px] text-muted-foreground">
-                            No image
+                            {dict?.common?.noImage || "No image"}
                           </div>
                         )}
                         <div className="grid gap-0.5">
@@ -323,17 +325,17 @@ export default function PropertiesManagementPage() {
                               {assignedWorker.name}
                             </Link>
                           ) : (
-                            "Unassigned"
+                            dict?.common?.unassigned || "Unassigned"
                           )}
                         </span>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="outline" size="sm" className="h-7">
-                              Change
+                              {dict?.common?.change || "Change"}
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="start">
-                            <DropdownMenuLabel>Assign Worker</DropdownMenuLabel>
+                            <DropdownMenuLabel>{dict?.properties?.assignWorker || "Assign Worker"}</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             {workers.map((worker) => (
                               <DropdownMenuItem
@@ -351,7 +353,7 @@ export default function PropertiesManagementPage() {
                                 handleAssignWorker(property.id, null)
                               }
                             >
-                              Unassigned
+                              {dict?.common?.unassigned || "Unassigned"}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -379,8 +381,8 @@ export default function PropertiesManagementPage() {
           </Table>
           <div className="flex items-center justify-between p-3 border-t text-sm">
             <span className="text-xs text-muted-foreground">
-              Showing {(page - 1) * pageSize + 1}
-              –{Math.min(page * pageSize, properties.length)} of {properties.length}
+              {dict?.common?.showing || "Showing"} {(page - 1) * pageSize + 1}
+              –{Math.min(page * pageSize, properties.length)} {dict?.common?.of || "of"} {properties.length}
             </span>
             <div className="flex items-center gap-2">
               <Button
@@ -389,10 +391,10 @@ export default function PropertiesManagementPage() {
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
               >
-                Prev
+                {dict?.common?.prev || "Prev"}
               </Button>
               <span className="text-xs">
-                Page {page} / {pageCount}
+                {dict?.common?.page || "Page"} {page} / {pageCount}
               </span>
               <Button
                 variant="outline"
@@ -400,7 +402,7 @@ export default function PropertiesManagementPage() {
                 onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
                 disabled={page >= pageCount}
               >
-                Next
+                {dict?.common?.next || "Next"}
               </Button>
             </div>
           </div>

@@ -34,6 +34,7 @@ import {
 import { PlusCircle, Upload, X } from "lucide-react";
 import Image from "next/image";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { useTranslation } from "@/hooks/use-translation";
 
 // Keep in sync with the server-side schema in src/app/api/properties/route.ts
 const PROPERTY_TYPES = ["Apartment", "House", "Condo", "Townhouse", "Commercial"] as const;
@@ -52,6 +53,7 @@ export default function AddPropertyDialog({
 }: {
   onAddProperty: (property: any) => void | Promise<void>;
 }) {
+  const { dict } = useTranslation();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
@@ -108,14 +110,14 @@ export default function AddPropertyDialog({
       <DialogTrigger asChild>
         <Button>
           <PlusCircle className="mr-2 h-4 w-4" />
-          Add Property
+          {dict?.properties?.addProperty || "Add Property"}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add New Property</DialogTitle>
+          <DialogTitle>{dict?.properties?.newProperty || "Add New Property"}</DialogTitle>
           <DialogDescription>
-            Enter the details of the new property. Click save when you're done.
+            {dict?.properties?.newPropertyDescription || "Enter the details of the new property. Click save when you're done."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -127,7 +129,7 @@ export default function AddPropertyDialog({
                   name="title"
                   render={({ field }) => (
                     <FormItem className="grid grid-cols-4 items-center gap-4 space-y-0">
-                      <FormLabel className="text-right">Title</FormLabel>
+                      <FormLabel className="text-right">{dict?.properties?.titleLabel || "Title"}</FormLabel>
                       <div className="col-span-3">
                         <FormControl>
                           <Input placeholder="e.g. Modern Downtown Apartment" {...field} />
@@ -142,7 +144,7 @@ export default function AddPropertyDialog({
                   name="address"
                   render={({ field }) => (
                     <FormItem className="grid grid-cols-4 items-center gap-4 space-y-0">
-                      <FormLabel className="text-right">Address</FormLabel>
+                      <FormLabel className="text-right">{dict?.common?.address || "Address"}</FormLabel>
                       <div className="col-span-3">
                         <FormControl>
                           <Input placeholder="e.g. 123 Main St, Anytown, USA" {...field} />
@@ -157,7 +159,7 @@ export default function AddPropertyDialog({
                   name="city"
                   render={({ field }) => (
                     <FormItem className="grid grid-cols-4 items-center gap-4 space-y-0">
-                      <FormLabel className="text-right">City</FormLabel>
+                      <FormLabel className="text-right">{dict?.common?.city || "City"}</FormLabel>
                       <div className="col-span-3">
                         <FormControl>
                           <Input placeholder="e.g. Berlin" {...field} />
@@ -172,7 +174,7 @@ export default function AddPropertyDialog({
                   name="type"
                   render={({ field }) => (
                     <FormItem className="grid grid-cols-4 items-center gap-4 space-y-0">
-                      <FormLabel className="text-right">Type</FormLabel>
+                      <FormLabel className="text-right">{dict?.common?.type || "Type"}</FormLabel>
                       <div className="col-span-3">
                         <Select value={field.value} onValueChange={field.onChange}>
                           <FormControl>
@@ -194,13 +196,13 @@ export default function AddPropertyDialog({
                   )}
                 />
                 <div className="grid grid-cols-4 items-start gap-4">
-                  <FormLabel className="text-right pt-2">Photos</FormLabel>
+                  <FormLabel className="text-right pt-2">{dict?.properties?.photos || "Photos"}</FormLabel>
                   <div className="col-span-3">
                     <Input id="photo" type="file" accept="image/*" onChange={handleImageChange} multiple className="hidden" />
                     <Button asChild variant="outline">
                       <label htmlFor="photo" className="cursor-pointer">
                         <Upload className="mr-2 h-4 w-4" />
-                        Choose Images
+                        {dict?.properties?.chooseImages || "Choose Images"}
                       </label>
                     </Button>
                   </div>
@@ -232,7 +234,7 @@ export default function AddPropertyDialog({
             </div>
             <DialogFooter>
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Saving..." : "Save Property"}
+                {submitting ? (dict?.common?.saving || "Saving...") : (dict?.properties?.saveProperty || "Save Property")}
               </Button>
             </DialogFooter>
           </form>

@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 
@@ -26,6 +27,7 @@ export default function SendMessageDialog({ tenant }: { tenant: any }) {
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const { toast } = useToast();
+  const { dict } = useTranslation();
 
   const handleSubmit = async () => {
     setSending(true);
@@ -41,8 +43,8 @@ export default function SendMessageDialog({ tenant }: { tenant: any }) {
       }
 
       toast({
-        title: "Message Sent!",
-        description: `Your message has been sent to ${tenant.name}.`,
+        title: dict?.tenants?.messageSentTitle || "Message Sent!",
+        description: (dict?.tenants?.messageSentDescription || "Your message has been sent to {name}.").replace("{name}", tenant.name),
       });
 
       setOpen(false);
@@ -50,7 +52,7 @@ export default function SendMessageDialog({ tenant }: { tenant: any }) {
       setMessage("");
     } catch (err: any) {
       toast({
-        title: "Failed to send message",
+        title: dict?.tenants?.messageSendFailed || "Failed to send message",
         description: err?.message,
         variant: "destructive",
       });
@@ -66,43 +68,43 @@ export default function SendMessageDialog({ tenant }: { tenant: any }) {
             <DialogTrigger asChild>
                 <Button variant="ghost" size="icon">
                     <Mail className="h-4 w-4" />
-                    <span className="sr-only">Send Message</span>
+                    <span className="sr-only">{dict?.tenants?.sendMessage || "Send Message"}</span>
                 </Button>
             </DialogTrigger>
           </TooltipTrigger>
           <TooltipContent>
-              <p>Send Message</p>
+              <p>{dict?.tenants?.sendMessage || "Send Message"}</p>
           </TooltipContent>
       </Tooltip>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Send Message</DialogTitle>
+          <DialogTitle>{dict?.tenants?.sendMessage || "Send Message"}</DialogTitle>
           <DialogDescription>
-            Compose a message to {tenant.name}.
+            {(dict?.tenants?.composeMessage || "Compose a message to {name}.").replace("{name}", tenant.name)}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="to" className="text-right">
-              To
+              {dict?.tenants?.messageTo || "To"}
             </Label>
             <Input id="to" value={tenant.email} readOnly className="col-span-3" />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="subject" className="text-right">
-              Subject
+              {dict?.tenants?.messageSubject || "Subject"}
             </Label>
             <Input
               id="subject"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               className="col-span-3"
-              placeholder="e.g., Rent Reminder"
+              placeholder={dict?.tenants?.messageSubjectPlaceholder || "e.g., Rent Reminder"}
             />
           </div>
           <div className="grid grid-cols-4 items-start gap-4">
             <Label htmlFor="message" className="text-right pt-2">
-              Message
+              {dict?.tenants?.messageBody || "Message"}
             </Label>
             <Textarea
               id="message"
@@ -110,13 +112,13 @@ export default function SendMessageDialog({ tenant }: { tenant: any }) {
               onChange={(e) => setMessage(e.target.value)}
               className="col-span-3"
               rows={6}
-              placeholder="Write your message here..."
+              placeholder={dict?.tenants?.messageBodyPlaceholder || "Write your message here..."}
             />
           </div>
         </div>
         <DialogFooter>
           <Button type="submit" onClick={handleSubmit} disabled={!subject || !message || sending}>
-            {sending ? "Sending..." : "Send Message"}
+            {sending ? (dict?.tenants?.sending || "Sending...") : (dict?.tenants?.sendMessage || "Send Message")}
           </Button>
         </DialogFooter>
       </DialogContent>

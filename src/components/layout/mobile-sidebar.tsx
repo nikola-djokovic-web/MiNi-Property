@@ -1,6 +1,6 @@
 "use client";
 
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import Link from "next/link";
 import { Settings, PanelLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,7 @@ export default function MobileSidebar() {
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="sm:max-w-xs">
+        <SheetTitle className="sr-only">Navigation menu</SheetTitle>
         <nav className="grid gap-6 text-lg font-medium">
           {/* The dashboard link is always rendered; CompanyLogo falls back to initials without an upload. */}
           <Link

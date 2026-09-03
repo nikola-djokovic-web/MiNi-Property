@@ -15,6 +15,7 @@ import { BarChart, Bar, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Tooltip as ShadTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface DashboardPageContentProps {
   lang: string;
@@ -39,6 +40,7 @@ export default function DashboardPageContent({
   ...otherProps
 }: DashboardPageContentProps) {
   const { user } = useCurrentUser();
+  const { dict } = useTranslation();
   const [maintenanceRequests, setMaintenanceRequests] = useState(maintenanceRequestsInit);
   const [properties, setProperties] = useState(propertiesInit);
   const [tenants, setTenants] = useState(tenantsInit);
@@ -144,30 +146,31 @@ export default function DashboardPageContent({
   const occupancyRate = totalProperties > 0 ? Math.round((occupiedProperties / totalProperties) * 100) : 0;
   const totalRent = properties.reduce((sum, property) => sum + (property.rent || 0), 0);
 
+  const fromLastMonth = dict?.dashboard?.fromLastMonth || "from last month";
   const keyMetrics = [
     {
-      title: dict.dashboard.totalProperties,
+      title: dict?.dashboard?.totalProperties || "Total Properties",
       value: totalProperties.toString(),
       icon: <Home className="h-4 w-4 text-muted-foreground" />,
-      change: "+2.1% from last month",
+      change: `+2.1% ${fromLastMonth}`,
     },
     {
-      title: dict.dashboard.totalTenants,
+      title: dict?.dashboard?.totalTenants || "Total Tenants",
       value: totalTenants.toString(),
       icon: <Users className="h-4 w-4 text-muted-foreground" />,
-      change: "+4.3% from last month",
+      change: `+4.3% ${fromLastMonth}`,
     },
     {
-      title: dict.dashboard.occupancyRate,
+      title: dict?.dashboard?.occupancyRate || "Occupancy Rate",
       value: `${occupancyRate}%`,
       icon: <TrendingUp className="h-4 w-4 text-muted-foreground" />,
-      change: "+1.2% from last month",
+      change: `+1.2% ${fromLastMonth}`,
     },
     {
-      title: dict.dashboard.monthlyRent,
+      title: dict?.dashboard?.monthlyRent || "Monthly Rent",
       value: `$${totalRent.toLocaleString()}`,
       icon: <DollarSign className="h-4 w-4 text-muted-foreground" />,
-      change: "+5.4% from last month",
+      change: `+5.4% ${fromLastMonth}`,
     },
   ];
 
@@ -276,8 +279,8 @@ export default function DashboardPageContent({
 
   return (
     <div className="space-y-6">
-      <PageHeader title={dict.dashboard.title} />
-      
+      <PageHeader title={dict?.dashboard?.title || "Dashboard"} />
+
       {/* Metrics Cards */}
       <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
         {keyMetrics.map((metric) => (
@@ -304,11 +307,11 @@ export default function DashboardPageContent({
         <Card className="lg:col-span-3">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>{dict.dashboard.recentMaintenance}</CardTitle>
+              <CardTitle>{dict?.dashboard?.recentMaintenance || "Recent Maintenance Requests"}</CardTitle>
               <CardDescription>
                 {effectiveUser?.role === "tenant"
-                  ? dict.dashboard.recentMaintenanceDescriptionTenant
-                  : dict.dashboard.recentMaintenanceDescriptionAdmin}
+                  ? (dict?.dashboard?.recentMaintenanceDescriptionTenant || "Your recent requests.")
+                  : (dict?.dashboard?.recentMaintenanceDescriptionAdmin || "New and in-progress maintenance issues.")}
               </CardDescription>
             </div>
             {effectiveUser?.role === "tenant" && (
@@ -322,29 +325,29 @@ export default function DashboardPageContent({
             <Table>
               <TableHeader>
                 <TableRow>
-                  {effectiveUser?.role !== "tenant" && <TableHead>Tenant</TableHead>}
-                  <TableHead>Issue</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  {effectiveUser?.role !== "tenant" && <TableHead>{dict?.maintenance?.tenant || "Tenant"}</TableHead>}
+                  <TableHead>{dict?.maintenance?.table?.issue || "Issue"}</TableHead>
+                  <TableHead>{dict?.common?.status || "Status"}</TableHead>
+                  <TableHead className="text-right">{dict?.common?.actions || "Actions"}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell 
-                      colSpan={effectiveUser?.role !== "tenant" ? 4 : 3} 
+                    <TableCell
+                      colSpan={effectiveUser?.role !== "tenant" ? 4 : 3}
                       className="text-center py-8 text-muted-foreground"
                     >
-                      Loading maintenance requests...
+                      {dict?.dashboard?.loadingMaintenance || "Loading maintenance requests..."}
                     </TableCell>
                   </TableRow>
                 ) : filteredMaintenanceRequests.length === 0 ? (
                   <TableRow>
-                    <TableCell 
-                      colSpan={effectiveUser?.role !== "tenant" ? 4 : 3} 
+                    <TableCell
+                      colSpan={effectiveUser?.role !== "tenant" ? 4 : 3}
                       className="text-center py-8 text-muted-foreground"
                     >
-                      No maintenance requests found.
+                      {dict?.maintenance?.noRequestsFound || "No maintenance requests found."}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -357,7 +360,9 @@ export default function DashboardPageContent({
                       {effectiveUser?.role !== "tenant" && (
                         <TableCell>
                           <div className="font-medium">
-                            {request.tenant?.name === 'Demo Co' ? 'Test Tenant' : `Resident of ${request.tenant?.name || 'Unknown Property'}`}
+                            {request.tenant?.name === 'Demo Co'
+                              ? 'Test Tenant'
+                              : (dict?.dashboard?.residentOf || "Resident of {name}").replace("{name}", request.tenant?.name || (dict?.dashboard?.unknownProperty || 'Unknown Property'))}
                           </div>
                           <div className="text-sm text-muted-foreground">
                             {property?.title || property?.name}
@@ -367,7 +372,13 @@ export default function DashboardPageContent({
                       <TableCell>{request.issue}</TableCell>
                       <TableCell>
                         <Badge className={getStatusClasses(request.status)}>
-                          {request.status}
+                          {request.status === 'New' || request.status === 'Open'
+                            ? (dict?.common?.new || 'New')
+                            : request.status === 'In Progress'
+                            ? (dict?.common?.inProgress || 'In Progress')
+                            : request.status === 'Completed'
+                            ? (dict?.common?.completed || 'Completed')
+                            : request.status}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
@@ -384,7 +395,7 @@ export default function DashboardPageContent({
                               </Link>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>View details</p>
+                              <p>{dict?.common?.viewDetails || "View details"}</p>
                             </TooltipContent>
                           </ShadTooltip>
                         </TooltipProvider>
@@ -402,9 +413,9 @@ export default function DashboardPageContent({
         {effectiveUser?.role === "admin" && (
           <Card>
             <CardHeader>
-              <CardTitle>{dict.dashboard.overduePayments}</CardTitle>
+              <CardTitle>{dict?.dashboard?.overduePayments || "Overdue Payments"}</CardTitle>
               <CardDescription>
-                {dict.dashboard.overduePaymentsDescription}
+                {dict?.dashboard?.overduePaymentsDescription || "Tenants with outstanding rent payments."}
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-8">
@@ -440,9 +451,9 @@ export default function DashboardPageContent({
         <div className="grid gap-4 sm:grid-cols-2 mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>{dict.dashboard.maintenanceOverview}</CardTitle>
+              <CardTitle>{dict?.dashboard?.maintenanceOverview || "Maintenance Overview"}</CardTitle>
               <CardDescription>
-                {dict.dashboard.maintenanceDescription}
+                {dict?.dashboard?.maintenanceDescription || "Current status of all maintenance requests."}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -480,9 +491,9 @@ export default function DashboardPageContent({
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>{dict.dashboard.financialsTitle}</CardTitle>
+              <CardTitle>{dict?.dashboard?.financialsTitle || "Financials (This Month)"}</CardTitle>
               <CardDescription>
-                {dict.dashboard.financialsDescription}
+                {dict?.dashboard?.financialsDescription || "Overview of rent collection status for the current month."}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -519,28 +530,3 @@ export default function DashboardPageContent({
     </div>
   );
 }
-
-function useTranslation(): { dict: any } {
-  const dict = {
-    dashboard: {
-      title: "Dashboard",
-      totalProperties: "Total Properties",
-      totalTenants: "Total Tenants",
-      occupancyRate: "Occupancy Rate",
-      monthlyRent: "Monthly Rent",
-      maintenanceOverview: "Maintenance Overview",
-      maintenanceDescription: "Overview of maintenance requests.",
-      financialsTitle: "Financial Overview",
-      financialsDescription: "Overview of financial performance.",
-      recentMaintenance: "Recent Maintenance Requests",
-      recentMaintenanceDescriptionTenant: "Your recent maintenance requests.",
-      recentMaintenanceDescriptionAdmin: "Recent maintenance requests overview.",
-      overduePayments: "Overdue Payments",
-      overduePaymentsDescription: "List of tenants with overdue payments.",
-    },
-  };
-
-  return { dict };
-}
-
-const { dict } = useTranslation();

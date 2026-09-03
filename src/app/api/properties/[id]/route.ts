@@ -9,7 +9,9 @@ const updatePropertySchema = z.object({
   name: z.string().trim().max(200).optional(),
   address: z.string().trim().max(300).optional(),
   city: z.string().trim().max(120).optional(),
-  imageUrl: z.string().trim().max(2000).optional(),
+  // imageUrl may be a real URL or a base64 data: URI from the client-side
+  // image preview, which can be a few MB of text - not just a short link.
+  imageUrl: z.string().trim().max(10_000_000).optional(),
   imageHint: z.string().trim().max(200).nullable().optional(),
   type: z.enum(["Apartment", "House", "Condo", "Townhouse", "Commercial"]).optional(),
   assignedWorkerId: z.string().min(1).nullable().optional(),

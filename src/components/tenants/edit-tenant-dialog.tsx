@@ -35,6 +35,7 @@ import { Property } from "@/lib/data";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { apiSend } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
 
 const TENANT_ID = process.env.NEXT_PUBLIC_DEMO_TENANT_ID ?? "";
 
@@ -56,6 +57,7 @@ export default function EditTenantDialog({
   onUpdateTenant: (tenant: any) => void;
 }) {
   const { toast } = useToast();
+  const { dict } = useTranslation();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -78,11 +80,11 @@ export default function EditTenantDialog({
         TENANT_ID
       );
       onUpdateTenant(updated);
-      toast({ title: "Tenant updated" });
+      toast({ title: dict?.tenants?.updated || "Tenant updated" });
       setOpen(false);
     } catch (err: any) {
       toast({
-        title: "Failed to update tenant",
+        title: dict?.tenants?.updateFailed || "Failed to update tenant",
         description: err?.message,
         variant: "destructive",
       });
@@ -98,19 +100,19 @@ export default function EditTenantDialog({
           <DialogTrigger asChild>
             <Button variant="ghost" size="icon">
               <Pencil className="h-4 w-4" />
-              <span className="sr-only">Edit Tenant</span>
+              <span className="sr-only">{dict?.tenants?.editTenant || "Edit Tenant"}</span>
             </Button>
           </DialogTrigger>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Edit Tenant</p>
+          <p>{dict?.tenants?.editTenant || "Edit Tenant"}</p>
         </TooltipContent>
       </Tooltip>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit Tenant</DialogTitle>
+          <DialogTitle>{dict?.tenants?.editTenant || "Edit Tenant"}</DialogTitle>
           <DialogDescription>
-            Update the details for {tenant.name}. Click save when you're done.
+            {(dict?.tenants?.editDescription || "Update the details for {name}. Click save when you're done.").replace("{name}", tenant.name)}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -120,7 +122,7 @@ export default function EditTenantDialog({
               name="name"
               render={({ field }) => (
                 <FormItem className="grid grid-cols-4 items-center gap-4 space-y-0">
-                  <FormLabel className="text-right">Name</FormLabel>
+                  <FormLabel className="text-right">{dict?.common?.name || "Name"}</FormLabel>
                   <div className="col-span-3">
                     <FormControl>
                       <Input {...field} />
@@ -135,7 +137,7 @@ export default function EditTenantDialog({
               name="email"
               render={({ field }) => (
                 <FormItem className="grid grid-cols-4 items-center gap-4 space-y-0">
-                  <FormLabel className="text-right">Email</FormLabel>
+                  <FormLabel className="text-right">{dict?.common?.email || "Email"}</FormLabel>
                   <div className="col-span-3">
                     <FormControl>
                       <Input type="email" {...field} />
@@ -150,7 +152,7 @@ export default function EditTenantDialog({
               name="propertyId"
               render={({ field }) => (
                 <FormItem className="grid grid-cols-4 items-center gap-4 space-y-0">
-                  <FormLabel className="text-right">Property</FormLabel>
+                  <FormLabel className="text-right">{dict?.common?.property || "Property"}</FormLabel>
                   <div className="col-span-3">
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
@@ -173,7 +175,7 @@ export default function EditTenantDialog({
             />
             <DialogFooter>
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Saving..." : "Save Changes"}
+                {submitting ? (dict?.common?.saving || "Saving...") : (dict?.common?.saveChanges || "Save Changes")}
               </Button>
             </DialogFooter>
           </form>

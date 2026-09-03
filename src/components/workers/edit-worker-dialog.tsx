@@ -28,6 +28,7 @@ import { Property, workers as allWorkers } from "@/lib/data";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { apiSend } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
 
 const TENANT_ID = process.env.NEXT_PUBLIC_DEMO_TENANT_ID ?? "";
 
@@ -50,6 +51,7 @@ export default function EditWorkerDialog({
   onUpdateWorker: (worker: any) => void;
 }) {
   const { toast } = useToast();
+  const { dict } = useTranslation();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -68,11 +70,11 @@ export default function EditWorkerDialog({
         TENANT_ID
       );
       onUpdateWorker(updated);
-      toast({ title: "Worker updated" });
+      toast({ title: dict?.workers?.updated || "Worker updated" });
       setOpen(false);
     } catch (err: any) {
       toast({
-        title: "Failed to update worker",
+        title: dict?.workers?.updateFailed || "Failed to update worker",
         description: err?.message,
         variant: "destructive",
       });
@@ -88,19 +90,19 @@ export default function EditWorkerDialog({
           <DialogTrigger asChild>
             <Button variant="ghost" size="icon">
               <Pencil className="h-4 w-4" />
-              <span className="sr-only">Edit Worker</span>
+              <span className="sr-only">{dict?.workers?.editWorker || "Edit Worker"}</span>
             </Button>
           </DialogTrigger>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Edit Worker</p>
+          <p>{dict?.workers?.editWorker || "Edit Worker"}</p>
         </TooltipContent>
       </Tooltip>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Edit Worker</DialogTitle>
+          <DialogTitle>{dict?.workers?.editWorker || "Edit Worker"}</DialogTitle>
           <DialogDescription>
-            Update the details for {worker.name}. Property assignments are managed from each property's page.
+            {(dict?.workers?.editWorkerDescription || "Update the details for {name}. Property assignments are managed from each property's page.").replace("{name}", worker.name)}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -110,7 +112,7 @@ export default function EditWorkerDialog({
               name="name"
               render={({ field }) => (
                 <FormItem className="grid grid-cols-4 items-center gap-4 space-y-0">
-                  <FormLabel className="text-right">Name</FormLabel>
+                  <FormLabel className="text-right">{dict?.common?.name || "Name"}</FormLabel>
                   <div className="col-span-3">
                     <FormControl>
                       <Input {...field} />
@@ -125,7 +127,7 @@ export default function EditWorkerDialog({
               name="email"
               render={({ field }) => (
                 <FormItem className="grid grid-cols-4 items-center gap-4 space-y-0">
-                  <FormLabel className="text-right">Email</FormLabel>
+                  <FormLabel className="text-right">{dict?.common?.email || "Email"}</FormLabel>
                   <div className="col-span-3">
                     <FormControl>
                       <Input type="email" {...field} />
@@ -137,7 +139,7 @@ export default function EditWorkerDialog({
             />
             <DialogFooter>
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Saving..." : "Save Changes"}
+                {submitting ? (dict?.common?.saving || "Saving...") : (dict?.common?.saveChanges || "Save Changes")}
               </Button>
             </DialogFooter>
           </form>

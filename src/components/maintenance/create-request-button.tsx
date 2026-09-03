@@ -4,6 +4,7 @@ import { useState } from "react";
 import { PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AddRequestDialog from "./add-request-dialog";
+import { useTranslation } from "@/hooks/use-translation";
 
 const TENANT_ID = process.env.NEXT_PUBLIC_DEMO_TENANT_ID ?? "";
 
@@ -29,6 +30,7 @@ async function apiSend<T>(
 }
 
 export default function CreateMaintenanceRequestButton() {
+  const { dict } = useTranslation();
   const handleAddRequest = async (newRequestData: any) => {
     try {
       // Use AI triage with fallback
@@ -92,8 +94,8 @@ export default function CreateMaintenanceRequestButton() {
       onAddRequest={handleAddRequest}
       triggerButton={
         <Button size="sm">
-          <PlusCircle className="mr-2 h-4 w-4" />
-          New Request
+          <PlusCircle className="h-4 w-4 sm:mr-2" />
+          <span className="hidden sm:inline">{dict?.maintenance?.newRequest || "New Request"}</span>
         </Button>
       }
     />

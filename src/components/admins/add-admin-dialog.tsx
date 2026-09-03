@@ -26,6 +26,7 @@ import {
 import { apiSend } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle } from "lucide-react";
+import { useTranslation } from "@/hooks/use-translation";
 
 const TENANT_ID = process.env.NEXT_PUBLIC_DEMO_TENANT_ID ?? "";
 
@@ -42,6 +43,7 @@ export default function AddAdminDialog({
   onAddAdmin: (admin: any) => void;
 }) {
   const { toast } = useToast();
+  const { dict } = useTranslation();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -63,8 +65,8 @@ export default function AddAdminDialog({
       await onAddAdmin(newAdmin);
 
       toast({
-        title: "Administrator Invited Successfully",
-        description: `Invitation sent to ${values.email}.`,
+        title: dict?.settings?.admins?.invitedSuccessTitle || "Administrator Invited Successfully",
+        description: (dict?.settings?.admins?.invitedSuccessDescription || "Invitation sent to {email}.").replace("{email}", values.email),
         variant: "default",
         className: "bg-green-50 border-green-200 text-green-900",
       });
@@ -72,10 +74,10 @@ export default function AddAdminDialog({
       setOpen(false);
       form.reset();
     } catch (err: any) {
-      const msg = err?.message || "Failed to invite administrator";
+      const msg = err?.message || (dict?.settings?.admins?.inviteFailedDescription || "Failed to invite administrator");
       form.setError("root", { message: msg });
       toast({
-        title: "Invitation Failed",
+        title: dict?.tenants?.invitationFailed || "Invitation Failed",
         description: msg,
         variant: "destructive",
       });
@@ -95,14 +97,14 @@ export default function AddAdminDialog({
       <DialogTrigger asChild>
         <Button>
           <PlusCircle className="mr-2 h-4 w-4" />
-          Add Administrator
+          {dict?.settings?.admins?.addAdmin || "Add Administrator"}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Invite New Administrator</DialogTitle>
+          <DialogTitle>{dict?.settings?.admins?.newAdmin || "Invite New Administrator"}</DialogTitle>
           <DialogDescription>
-            Enter the administrator's details. They will receive an invitation email to complete their registration.
+            {dict?.settings?.admins?.newAdminDescription || "Enter the administrator's details. They will receive an invitation email to complete their registration."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -112,10 +114,10 @@ export default function AddAdminDialog({
               name="name"
               render={({ field }) => (
                 <FormItem className="grid grid-cols-4 items-center gap-4 space-y-0">
-                  <FormLabel className="text-right">Name</FormLabel>
+                  <FormLabel className="text-right">{dict?.common?.name || "Name"}</FormLabel>
                   <div className="col-span-3">
                     <FormControl>
-                      <Input placeholder="Full name" {...field} />
+                      <Input placeholder={dict?.settings?.admins?.namePlaceholder || "Full name"} {...field} />
                     </FormControl>
                     <FormMessage />
                   </div>
@@ -127,10 +129,10 @@ export default function AddAdminDialog({
               name="email"
               render={({ field }) => (
                 <FormItem className="grid grid-cols-4 items-center gap-4 space-y-0">
-                  <FormLabel className="text-right">Email</FormLabel>
+                  <FormLabel className="text-right">{dict?.common?.email || "Email"}</FormLabel>
                   <div className="col-span-3">
                     <FormControl>
-                      <Input type="email" placeholder="admin@example.com" {...field} />
+                      <Input type="email" placeholder={dict?.settings?.admins?.emailPlaceholder || "admin@example.com"} {...field} />
                     </FormControl>
                     <FormMessage />
                   </div>
@@ -142,7 +144,7 @@ export default function AddAdminDialog({
             )}
             <DialogFooter>
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Sending..." : "Send Invitation"}
+                {submitting ? (dict?.tenants?.sendingInvite || "Sending Invite...") : (dict?.tenants?.sendInvitation || "Send Invitation")}
               </Button>
             </DialogFooter>
           </form>

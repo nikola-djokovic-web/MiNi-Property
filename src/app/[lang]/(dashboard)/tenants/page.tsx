@@ -42,6 +42,7 @@ import DeleteUserDialog from "@/components/workers/delete-user-dialog";
 import { Progress } from "@/components/ui/progress";
 import { usePathname } from "next/navigation";
 import eventBus from "@/lib/events";
+import { useTranslation } from "@/hooks/use-translation";
 // import { useToast } from "@/components/ui/use-toast";
 
 function getStatusClasses(status: string) {
@@ -71,6 +72,7 @@ function getStatusIcon(status: string) {
 }
 
 export default function TenantsPage() {
+  const { dict } = useTranslation();
   const [tenants, setTenants] = useState<any[]>([]);
   const [deletingTenants, setDeletingTenants] = useState<Set<string>>(new Set());
   const [properties, setProperties] = useState<any[]>([]);
@@ -236,7 +238,7 @@ export default function TenantsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Tenants" description="View and manage your tenants.">
+      <PageHeader title={dict?.tenants?.title || "Tenants"} description={dict?.tenants?.description || "View and manage your tenants."}>
         <AddTenantDialog
           properties={properties}
           onAddTenant={handleAddTenant}
@@ -247,16 +249,16 @@ export default function TenantsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead className="hidden md:table-cell">Property</TableHead>
+                <TableHead>{dict?.tenants?.table?.name || "Name"}</TableHead>
+                <TableHead className="hidden md:table-cell">{dict?.tenants?.table?.property || "Property"}</TableHead>
                 <TableHead className="hidden lg:table-cell">
-                  Lease End Date
+                  {dict?.tenants?.table?.leaseEndDate || "Lease End Date"}
                 </TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{dict?.tenants?.table?.status || "Status"}</TableHead>
                 <TableHead className="hidden sm:table-cell">
-                  Monthly Rent
+                  {dict?.tenants?.table?.monthlyRent || "Monthly Rent"}
                 </TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-right">{dict?.tenants?.table?.actions || "Actions"}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -266,7 +268,7 @@ export default function TenantsPage() {
                     colSpan={6}
                     className="py-8 text-center text-muted-foreground"
                   >
-                    Loading tenants…
+                    {dict?.common?.loading || "Loading tenants…"}
                   </TableCell>
                 </TableRow>
               ) : tenants.length === 0 ? (
@@ -275,7 +277,7 @@ export default function TenantsPage() {
                     colSpan={6}
                     className="py-8 text-center text-muted-foreground"
                   >
-                    No tenants yet.
+                    {dict?.tenants?.noTenantsYet || "No tenants yet."}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -337,7 +339,7 @@ export default function TenantsPage() {
                             )}
                           >
                             {getStatusIcon((tenant as any).registered ? "Active" : "New")}
-                            {(tenant as any).registered ? "Active" : "New"}
+                            {(tenant as any).registered ? (dict?.common?.active || "Active") : (dict?.common?.new || "New")}
                           </Badge>
                           {!(tenant as any).registered &&
                             onboardingProgress < 100 && (
@@ -382,11 +384,11 @@ export default function TenantsPage() {
                                   )}
                                 >
                                   <Eye className="h-4 w-4" />
-                                  <span className="sr-only">View Details</span>
+                                  <span className="sr-only">{dict?.common?.viewDetails || "View Details"}</span>
                                 </Link>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p>View Details</p>
+                                <p>{dict?.common?.viewDetails || "View Details"}</p>
                               </TooltipContent>
                             </Tooltip>
 
@@ -415,7 +417,7 @@ export default function TenantsPage() {
           </Table>
           <div className="flex items-center justify-between px-4 py-3 border-t">
             <div className="text-sm text-muted-foreground">
-              Page {page} of {Math.max(1, Math.ceil(total / pageSize))}
+              {dict?.common?.page || "Page"} {page} {dict?.common?.of || "of"} {Math.max(1, Math.ceil(total / pageSize))}
             </div>
             <div className="flex gap-2">
               <button
@@ -423,14 +425,14 @@ export default function TenantsPage() {
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
               >
-                Previous
+                {dict?.common?.previous || "Previous"}
               </button>
               <button
                 className="px-3 py-1 rounded border disabled:opacity-50"
                 disabled={page >= Math.ceil(total / pageSize)}
                 onClick={() => setPage((p) => p + 1)}
               >
-                Next
+                {dict?.common?.next || "Next"}
               </button>
             </div>
           </div>

@@ -46,6 +46,7 @@ const getIconComponent = (iconName: string) => {
 
 function ThemeSwitcher() {
   const { setTheme, theme } = useTheme();
+  const { dict } = useTranslation();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -65,7 +66,7 @@ function ThemeSwitcher() {
         onClick={() => setTheme('light')}
       >
         <Sun className="h-4 w-4" />
-        <span className="sr-only">Light mode</span>
+        <span className="sr-only">{dict?.header?.lightMode || "Light mode"}</span>
       </Button>
       <Button
         variant={theme === 'dark' ? 'secondary' : 'ghost'}
@@ -74,7 +75,7 @@ function ThemeSwitcher() {
         onClick={() => setTheme('dark')}
       >
         <Moon className="h-4 w-4" />
-        <span className="sr-only">Dark mode</span>
+        <span className="sr-only">{dict?.header?.darkMode || "Dark mode"}</span>
       </Button>
     </div>
   )
@@ -82,6 +83,7 @@ function ThemeSwitcher() {
 
 function LanguageSwitcher() {
     const pathname = usePathname();
+    const { dict } = useTranslation();
 
     const getPathForLocale = (locale: string) => {
         if (!pathname) return '/';
@@ -96,11 +98,11 @@ function LanguageSwitcher() {
             <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon" className="rounded-full">
                     <Languages className="h-4 w-4" />
-                    <span className="sr-only">Change language</span>
+                    <span className="sr-only">{dict?.header?.changeLanguage || "Change language"}</span>
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Select Language</DropdownMenuLabel>
+                <DropdownMenuLabel>{dict?.header?.selectLanguage || "Select Language"}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {i18n.locales.map(locale => (
                      <DropdownMenuItem key={locale} asChild>
@@ -120,9 +122,12 @@ function LanguageSwitcher() {
 
 function Notifications() {
     const { user } = useCurrentUser();
+    const { dict } = useTranslation();
     const { notifications, isLoading, markAsRead, markAllAsRead, getNotificationsForUser } = useNotifications();
     const { isConnected, connectionError } = useRealTimeNotifications();
     const router = useRouter();
+    const pathname = usePathname();
+    const dateLocale = pathname.split('/')[1] === 'de' ? 'de-DE' : 'en-US';
     const [mounted, setMounted] = useState(false);
     
     if (!user) return null;
@@ -156,7 +161,7 @@ function Notifications() {
                 data-notification-bell
             >
                 <Bell className="h-4 w-4" />
-                <span className="sr-only">Notifications</span>
+                <span className="sr-only">{dict?.header?.notifications || "Notifications"}</span>
             </Button>
         );
     }
@@ -205,20 +210,20 @@ function Notifications() {
                         isConnected ? "bg-green-500" : "bg-red-500",
                         connectionError && "animate-pulse"
                     )} />
-                    <span className="sr-only">Notifications</span>
+                    <span className="sr-only">{dict?.header?.notifications || "Notifications"}</span>
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[380px]">
                 <DropdownMenuLabel className="flex items-center justify-between">
-                    <span>Notifications</span>
+                    <span>{dict?.header?.notifications || "Notifications"}</span>
                     {unreadCount > 0 && (
-                        <Button 
-                            variant="link" 
-                            size="sm" 
-                            className="h-auto p-0 text-xs" 
+                        <Button
+                            variant="link"
+                            size="sm"
+                            className="h-auto p-0 text-xs"
                             onClick={handleMarkAllReadForUser}
                         >
-                            Mark all as read
+                            {dict?.header?.markAllAsRead || "Mark all as read"}
                         </Button>
                     )}
                 </DropdownMenuLabel>
@@ -227,7 +232,7 @@ function Notifications() {
                 {isLoading ? (
                     <div className="p-8 text-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-                        <p className="text-sm text-foreground/70 dark:text-foreground/80">Loading notifications...</p>
+                        <p className="text-sm text-foreground/70 dark:text-foreground/80">{dict?.header?.loadingNotifications || "Loading notifications..."}</p>
                     </div>
                 ) : recentNotifications.length > 0 ? recentNotifications.map(n => (
                     <DropdownMenuItem 
@@ -271,16 +276,16 @@ function Notifications() {
                                     n.unread && "font-semibold"
                                 )}>{n.title}</p>
                                 {n.priority === 'urgent' && (
-                                    <Badge variant="destructive" className="h-4 text-xs font-medium">Urgent</Badge>
+                                    <Badge variant="destructive" className="h-4 text-xs font-medium">{dict?.header?.urgent || "Urgent"}</Badge>
                                 )}
                                 {n.priority === 'high' && (
-                                    <Badge variant="outline" className="h-4 text-xs font-medium border-amber-500 text-amber-700 dark:text-amber-400 dark:border-amber-400">High</Badge>
+                                    <Badge variant="outline" className="h-4 text-xs font-medium border-amber-500 text-amber-700 dark:text-amber-400 dark:border-amber-400">{dict?.common?.high || "High"}</Badge>
                                 )}
                             </div>
                             <p className="text-xs text-foreground/75 dark:text-foreground/85 leading-relaxed">{n.description}</p>
                             {n.createdAt && (
                                 <p className="text-xs text-foreground/60 dark:text-foreground/70 mt-1">
-                                    {new Date(n.createdAt).toLocaleDateString('de-DE')} at {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    {new Date(n.createdAt).toLocaleDateString(dateLocale)} {dict?.header?.at || "at"} {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </p>
                             )}
                             {n.actionLabel && n.actionUrl && (
@@ -317,8 +322,8 @@ function Notifications() {
                 )) : (
                     <div className="p-8 text-center">
                         <Bell className="h-8 w-8 text-foreground/40 dark:text-foreground/50 mx-auto mb-2" />
-                        <p className="text-sm text-foreground/70 dark:text-foreground/80">No new notifications.</p>
-                        <p className="text-xs text-foreground/50 dark:text-foreground/60 mt-1">You're all caught up!</p>
+                        <p className="text-sm text-foreground/70 dark:text-foreground/80">{dict?.header?.noNewNotifications || "No new notifications."}</p>
+                        <p className="text-xs text-foreground/50 dark:text-foreground/60 mt-1">{dict?.header?.allCaughtUp || "You're all caught up!"}</p>
                     </div>
                 )}
                 </ScrollArea>
@@ -326,16 +331,16 @@ function Notifications() {
                     <>
                         <DropdownMenuSeparator />
                         <div className="p-2">
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
+                            <Button
+                                variant="outline"
+                                size="sm"
                                 className="w-full h-8 text-xs"
                                 onClick={() => {
                                     const currentLang = window.location.pathname.split('/')[1] || 'en';
                                     router.push(`/${currentLang}/notifications`);
                                 }}
                             >
-                                View All Notifications ({userNotifications.length})
+                                {(dict?.header?.viewAllNotifications || "View All Notifications ({count})").replace("{count}", String(userNotifications.length))}
                             </Button>
                         </div>
                     </>
@@ -365,16 +370,25 @@ export default function AppHeader() {
 
   return (
     <>
-      <header className="sticky top-0 pt-5 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+      <header className="sticky top-0 pt-5 z-30 flex h-14 items-center gap-1.5 border-b bg-background px-2 sm:static sm:h-auto sm:gap-4 sm:border-0 sm:bg-transparent sm:px-6">
         <MobileSidebar />
         <div className="relative ml-auto flex-1 md:grow-0">
           <Button
             variant="outline"
-            className="flex w-full items-center gap-2 text-muted-foreground md:w-[200px] lg:w-[320px] justify-start"
+            size="icon"
+            className="text-muted-foreground sm:hidden"
             onClick={() => setSearchOpen(true)}
           >
             <Search className="h-4 w-4" />
-            <span className="truncate">Search...</span>
+            <span className="sr-only">{dict?.common?.search || "Search"}</span>
+          </Button>
+          <Button
+            variant="outline"
+            className="hidden w-full items-center gap-2 text-muted-foreground sm:flex md:w-[200px] lg:w-[320px] justify-start"
+            onClick={() => setSearchOpen(true)}
+          >
+            <Search className="h-4 w-4" />
+            <span className="truncate">{dict?.header?.searchButton || "Search..."}</span>
           </Button>
         </div>
         <CreateMaintenanceRequestButton />
@@ -401,7 +415,7 @@ export default function AppHeader() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>
-              <p>My Account</p>
+              <p>{dict?.header?.myAccount || "My Account"}</p>
               <p className="text-xs text-muted-foreground font-normal">
                 {user.name} ({user.role})
               </p>
@@ -409,10 +423,10 @@ export default function AppHeader() {
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <Link href={`/${pathname.split('/')[1]}/profile`}>
-                Profile
+                {dict?.header?.profile || "Profile"}
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>{dict?.header?.logout || "Logout"}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </header>

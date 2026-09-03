@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PageHeader from '@/components/page-header';
+import { useTranslation } from '@/hooks/use-translation';
 
 function getStatusClasses(status: string) {
   switch (status) {
@@ -63,6 +64,7 @@ export default function MaintenanceDetailPage() {
   const pathname = usePathname();
   const { user } = useCurrentUser();
   const { addNotification } = useNotifications();
+  const { dict } = useTranslation();
   const requestId = params.id as string;
   const lang = pathname.split('/')[1];
   
@@ -265,8 +267,8 @@ export default function MaintenanceDetailPage() {
         addNotification({
           role: 'tenant',
           icon: 'CheckCircle',
-          title: "Request Completed",
-          description: `Your maintenance request "${request.issue}" has been completed.`
+          title: dict?.maintenance?.notifications?.requestCompletedTitle || "Request Completed",
+          description: (dict?.maintenance?.notifications?.requestCompletedDescription || "Your maintenance request \"{issue}\" has been completed.").replace("{issue}", request.issue)
         });
       }
     } catch (error) {
@@ -289,10 +291,10 @@ export default function MaintenanceDetailPage() {
       addNotification({
         role: 'tenant',
         icon: 'Bell',
-        title: actualWorkerId ? "Request Assigned" : "Request Unassigned",
-        description: actualWorkerId 
-          ? `Your request "${request.issue}" has been assigned to a worker.`
-          : `Your request "${request.issue}" has been unassigned.`
+        title: actualWorkerId ? (dict?.maintenance?.notifications?.requestAssignedTitle || "Request Assigned") : (dict?.maintenance?.notifications?.requestUnassignedTitle || "Request Unassigned"),
+        description: actualWorkerId
+          ? (dict?.maintenance?.notifications?.requestAssignedDescription || "Your request \"{issue}\" has been assigned to a worker.").replace("{issue}", request.issue)
+          : (dict?.maintenance?.notifications?.requestUnassignedDescription || "Your request \"{issue}\" has been unassigned.").replace("{issue}", request.issue)
       });
 
       if (actualWorkerId) {
@@ -301,8 +303,8 @@ export default function MaintenanceDetailPage() {
           addNotification({
             role: 'worker',
             icon: 'Wrench',
-            title: "New Assignment",
-            description: `You've been assigned a new task: "${request.issue}".`
+            title: dict?.maintenance?.notifications?.newAssignmentTitle || "New Assignment",
+            description: (dict?.maintenance?.notifications?.newAssignmentDescriptionAssigned || "You've been assigned a new task: \"{issue}\".").replace("{issue}", request.issue)
           });
         }
       }
@@ -323,15 +325,15 @@ export default function MaintenanceDetailPage() {
       addNotification({
         role: 'tenant',
         icon: 'Bell',
-        title: "Request Assigned",
-        description: `Your request "${request.issue}" has been assigned to a worker.`
+        title: dict?.maintenance?.notifications?.requestAssignedTitle || "Request Assigned",
+        description: (dict?.maintenance?.notifications?.requestAssignedDescription || "Your request \"{issue}\" has been assigned to a worker.").replace("{issue}", request.issue)
       });
-      
+
       addNotification({
         role: 'worker',
         icon: 'Wrench',
-        title: "New Assignment",
-        description: `You've assigned yourself a new task: "${request.issue}".`
+        title: dict?.maintenance?.notifications?.newAssignmentTitle || "New Assignment",
+        description: (dict?.maintenance?.notifications?.newAssignmentDescriptionSelf || "You've assigned yourself a new task: \"{issue}\".").replace("{issue}", request.issue)
       });
     } catch (error) {
       console.error('Failed to assign to self:', error);
@@ -376,8 +378,8 @@ export default function MaintenanceDetailPage() {
         addNotification({
           role: 'worker',
           icon: 'CheckCircle',
-          title: 'Work Log Saved',
-          description: 'Your work notes have been recorded successfully.'
+          title: dict?.maintenance?.notifications?.workLogSavedTitle || 'Work Log Saved',
+          description: dict?.maintenance?.notifications?.workLogSavedDescription || 'Your work notes have been recorded successfully.'
         });
       } else {
         // Fallback: just add to local state if API fails
@@ -430,8 +432,8 @@ export default function MaintenanceDetailPage() {
       addNotification({
         role: 'tenant',
         icon: 'Play',
-        title: 'Work Started',
-        description: `Work has started on your request "${request.issue}".`
+        title: dict?.maintenance?.notifications?.workStartedTitle || 'Work Started',
+        description: (dict?.maintenance?.notifications?.workStartedDescription || 'Work has started on your request "{issue}".').replace("{issue}", request.issue)
       });
     } catch (error) {
       console.error('Failed to start timer:', error);
@@ -487,8 +489,8 @@ export default function MaintenanceDetailPage() {
       addNotification({
         role: 'tenant',
         icon: 'Square',
-        title: 'Work Paused',
-        description: `Work has been paused on your request "${request.issue}".`
+        title: dict?.maintenance?.notifications?.workPausedTitle || 'Work Paused',
+        description: (dict?.maintenance?.notifications?.workPausedDescription || 'Work has been paused on your request "{issue}".').replace("{issue}", request.issue)
       });
     } catch (error) {
       console.error('Failed to log time:', error);
@@ -543,13 +545,13 @@ export default function MaintenanceDetailPage() {
     return (
       <div className="flex flex-col gap-6">
         <PageHeader
-          title="Loading..."
-          description="Fetching maintenance request details"
+          title={dict?.common?.loading || "Loading..."}
+          description={dict?.maintenance?.fetchingDetails || "Fetching maintenance request details"}
         >
           <Button asChild variant="outline">
             <Link href={`/${lang}/maintenance`}>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Maintenance
+              {dict?.maintenance?.backToMaintenance || "Back to Maintenance"}
             </Link>
           </Button>
         </PageHeader>
@@ -564,13 +566,13 @@ export default function MaintenanceDetailPage() {
     return (
       <div className="flex flex-col gap-6">
         <PageHeader
-          title="Request Not Found"
-          description={error || "The requested maintenance request could not be found"}
+          title={dict?.maintenance?.requestNotFound || "Request Not Found"}
+          description={error || (dict?.maintenance?.requestNotFoundDescription || "The requested maintenance request could not be found")}
         >
           <Button asChild variant="outline">
             <Link href={`/${lang}/maintenance`}>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Maintenance
+              {dict?.maintenance?.backToMaintenance || "Back to Maintenance"}
             </Link>
           </Button>
         </PageHeader>
@@ -605,7 +607,7 @@ export default function MaintenanceDetailPage() {
             <ArrowLeft className="h-5 w-5" />
           </Link>
         </Button>
-        <h1 className="text-3xl font-bold">Maintenance Request Details</h1>
+        <h1 className="text-3xl font-bold">{dict?.maintenance?.detailsTitle || "Maintenance Request Details"}</h1>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -627,17 +629,17 @@ export default function MaintenanceDetailPage() {
               </h2>
               
               <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-3">Description provided by tenant</h3>
+                <h3 className="text-lg font-semibold mb-3">{dict?.maintenance?.descriptionProvidedByTenant || "Description provided by tenant"}</h3>
                 {isEditing ? (
-                  <Textarea 
-                    value={editableDetails} 
-                    onChange={(e) => setEditableDetails(e.target.value)} 
+                  <Textarea
+                    value={editableDetails}
+                    onChange={(e) => setEditableDetails(e.target.value)}
                     rows={3}
                     className="resize-none"
                   />
                 ) : (
                   <p className="text-muted-foreground leading-relaxed">
-                    {request.details || 'No description provided'}
+                    {request.details || (dict?.maintenance?.noDescriptionProvided || 'No description provided')}
                   </p>
                 )}
               </div>
@@ -646,10 +648,10 @@ export default function MaintenanceDetailPage() {
                 {isEditing ? (
                   <>
                     <Button variant="ghost" onClick={() => setIsEditing(false)}>
-                      Cancel
+                      {dict?.common?.cancel || "Cancel"}
                     </Button>
                     <Button onClick={handleSaveChanges}>
-                      Save Changes
+                      {dict?.common?.saveChanges || "Save Changes"}
                     </Button>
                   </>
                 ) : (
@@ -657,7 +659,7 @@ export default function MaintenanceDetailPage() {
                     {canTenantEdit && (
                       <Button variant="outline" onClick={() => setIsEditing(true)}>
                         <Pencil className="mr-2 h-4 w-4" />
-                        Edit Request
+                        {dict?.maintenance?.editRequest || "Edit Request"}
                       </Button>
                     )}
                     {/* Timer Display for Active Workers */}
@@ -678,12 +680,12 @@ export default function MaintenanceDetailPage() {
                         </div>
                         <Select value={request.status} onValueChange={(val) => handleStatusChange(val as any)} disabled={!canTakeAction}>
                           <SelectTrigger className="w-[150px]">
-                            <SelectValue placeholder="Status" />
+                            <SelectValue placeholder={dict?.common?.status || "Status"} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="New">New</SelectItem>
-                            <SelectItem value="In Progress">In Progress</SelectItem>
-                            <SelectItem value="Completed">Completed</SelectItem>
+                            <SelectItem value="New">{dict?.common?.new || "New"}</SelectItem>
+                            <SelectItem value="In Progress">{dict?.common?.inProgress || "In Progress"}</SelectItem>
+                            <SelectItem value="Completed">{dict?.common?.completed || "Completed"}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -694,7 +696,7 @@ export default function MaintenanceDetailPage() {
                       {/* Workers can only take unassigned requests */}
                       {isWorker && !request.assignedWorkerId && (
                         <Button onClick={handleAssignToSelf}>
-                          Take Request
+                          {dict?.maintenance?.takeRequest || "Take Request"}
                         </Button>
                       )}
                       {/* Admins can take requests and assign to others */}
@@ -702,12 +704,12 @@ export default function MaintenanceDetailPage() {
                         <>
                           {!request.assignedWorkerId && (
                             <Button onClick={handleAssignToSelf}>
-                              Take Request
+                              {dict?.maintenance?.takeRequest || "Take Request"}
                             </Button>
                           )}
                           <Select onValueChange={handleAssignRequest}>
                             <SelectTrigger className="w-auto px-4 h-10">
-                              <SelectValue placeholder="Assign to Worker" />
+                              <SelectValue placeholder={dict?.maintenance?.assignToWorker || "Assign to Worker"} />
                             </SelectTrigger>
                             <SelectContent>
                               {workers.map((worker) => (
@@ -731,8 +733,8 @@ export default function MaintenanceDetailPage() {
           {(showTimerAndStatus || isAdmin) && (
             <Card>
               <CardContent className="p-6">
-                <h2 className="text-xl font-bold mb-2">Work Logs</h2>
-                <p className="text-muted-foreground text-sm mb-6">Document the work performed to resolve this issue.</p>
+                <h2 className="text-xl font-bold mb-2">{dict?.maintenance?.workLogs || "Work Logs"}</h2>
+                <p className="text-muted-foreground text-sm mb-6">{dict?.maintenance?.workLogsDescription || "Document the work performed to resolve this issue."}</p>
                 
                 {/* Existing Work Logs */}
                 {workLogs.length > 0 && (
@@ -751,21 +753,22 @@ export default function MaintenanceDetailPage() {
                 {/* Notes Input - Only for assigned worker or admin */}
                 {(isAssignedToMe || (isAdmin && request.assignedWorkerId === user?.id)) && (
                   <div className="space-y-4">
-                    <Label>Notes</Label>
+                    <Label>{dict?.maintenance?.notes || "Notes"}</Label>
                     <Textarea
-                      placeholder="e.g., Replaced the washer in the kitchen faucet. Tested for leaks, none found."
+                      placeholder={dict?.maintenance?.notesPlaceholder || "e.g., Replaced the washer in the kitchen faucet. Tested for leaks, none found."}
                       value={workNotes}
                       onChange={(e) => setWorkNotes(e.target.value)}
                       rows={4}
                       className="resize-none"
                   />
-                  
+
                   <div className="flex justify-end">
-                    <Button 
-                      onClick={handleSaveNotes} 
+                    <Button
+                      onClick={handleSaveNotes}
                       disabled={!workNotes.trim()}
                       className="bg-teal-600 text-white hover:bg-teal-700"
                     >
+                      {dict?.maintenance?.addWorkLog || "Add Work Log"}
                     </Button>
                   </div>
                 </div>
@@ -780,8 +783,8 @@ export default function MaintenanceDetailPage() {
           {/* Request Details Card */}
           <Card>
             <CardContent className="p-6">
-              <h3 className="text-xl font-bold mb-6">Request Details</h3>
-              
+              <h3 className="text-xl font-bold mb-6">{dict?.maintenance?.requestDetails || "Request Details"}</h3>
+
               {/* Tenant Info */}
               <div className="flex items-center gap-3 mb-6">
                 <Avatar className="h-12 w-12">
@@ -791,44 +794,44 @@ export default function MaintenanceDetailPage() {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-sm text-muted-foreground">Tenant</p>
+                  <p className="text-sm text-muted-foreground">{dict?.maintenance?.tenant || "Tenant"}</p>
                   <p className="font-medium">
                     {request.tenant?.name || 'Alice Johnson'}
                   </p>
                 </div>
               </div>
-              
+
               {/* Property & Date Grid */}
               <div className="grid grid-cols-2 gap-4 text-sm mb-6">
                 <div>
-                  <p className="text-muted-foreground mb-1">Property</p>
+                  <p className="text-muted-foreground mb-1">{dict?.common?.property || "Property"}</p>
                   <p className="font-medium">
                     {request.property?.name || request.propertyName || 'Modern Downtown Apartment'}
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground mb-1">Submitted</p>
+                  <p className="text-muted-foreground mb-1">{dict?.maintenance?.table?.submitted || "Submitted"}</p>
                 <p className="font-medium">
                   {request.createdAt ? new Date(request.createdAt).toLocaleDateString('de-DE') : '20.07.2024'}
                 </p>
               </div>
             </div>
-            
+
             {/* AI Category */}
             <div className="mb-6">
-              <p className="text-muted-foreground text-sm mb-1">AI Category</p>
+              <p className="text-muted-foreground text-sm mb-1">{dict?.maintenance?.aiCategory || "AI Category"}</p>
               <p className="font-medium">
-                {request.issue?.toLowerCase().includes('leak') || request.issue?.toLowerCase().includes('faucet') || request.issue?.toLowerCase().includes('pipe') ? 'Plumbing' :
-                 request.issue?.toLowerCase().includes('electric') || request.issue?.toLowerCase().includes('light') || request.issue?.toLowerCase().includes('outlet') ? 'Electrical' :
-                 request.issue?.toLowerCase().includes('heat') || request.issue?.toLowerCase().includes('ac') || request.issue?.toLowerCase().includes('air') ? 'HVAC' :
-                 request.issue?.toLowerCase().includes('door') || request.issue?.toLowerCase().includes('window') || request.issue?.toLowerCase().includes('lock') ? 'Hardware' :
-                 'General Maintenance'}
+                {request.issue?.toLowerCase().includes('leak') || request.issue?.toLowerCase().includes('faucet') || request.issue?.toLowerCase().includes('pipe') ? (dict?.maintenance?.categories?.plumbing || 'Plumbing') :
+                 request.issue?.toLowerCase().includes('electric') || request.issue?.toLowerCase().includes('light') || request.issue?.toLowerCase().includes('outlet') ? (dict?.maintenance?.categories?.electrical || 'Electrical') :
+                 request.issue?.toLowerCase().includes('heat') || request.issue?.toLowerCase().includes('ac') || request.issue?.toLowerCase().includes('air') ? (dict?.maintenance?.categories?.hvac || 'HVAC') :
+                 request.issue?.toLowerCase().includes('door') || request.issue?.toLowerCase().includes('window') || request.issue?.toLowerCase().includes('lock') ? (dict?.maintenance?.categories?.hardware || 'Hardware') :
+                 (dict?.maintenance?.categories?.general || 'General Maintenance')}
               </p>
             </div>
             
             {/* Assigned To */}
             <div className="mb-6">
-              <p className="text-muted-foreground text-sm mb-2">Assigned To</p>
+              <p className="text-muted-foreground text-sm mb-2">{dict?.common?.assignedTo || "Assigned To"}</p>
               {request.assignedWorkerId ? (
                 <div className="flex items-center gap-3">
                   <Avatar className="h-8 w-8">
@@ -856,41 +859,41 @@ export default function MaintenanceDetailPage() {
                         
                         // If not found in workers, check if it's the current user (could be admin)
                         if (user?.id === request.assignedWorkerId) {
-                          return `${user?.name || 'Admin'} (Admin)`;
+                          return `${user?.name || (dict?.maintenance?.adminLabel || 'Admin')} (${dict?.maintenance?.adminLabel || 'Admin'})`;
                         }
-                        
-                        return 'Unknown User';
-                      })()} 
+
+                        return dict?.maintenance?.unknownUser || 'Unknown User';
+                      })()}
                     </p>
                     <p className="text-muted-foreground text-xs">
                       {(() => {
                         // First try to find in workers array
                         const worker = workers.find(w => w.id === request.assignedWorkerId);
                         if (worker) return worker.email;
-                        
+
                         // If not found in workers, check if it's the current user (could be admin)
                         if (user?.id === request.assignedWorkerId) {
                           return user?.email || '';
                         }
-                        
+
                         return '';
-                      })()} 
+                      })()}
                     </p>
                   </div>
                 </div>
               ) : (
-                <p className="font-medium">Unassigned</p>
+                <p className="font-medium">{dict?.common?.unassigned || "Unassigned"}</p>
               )}
-              
+
               {/* Reassignment for admins */}
               {canChangeAssignment && request.assignedWorkerId && (
                 <div className="mt-3">
                   <Select value={request.assignedWorkerId || undefined} onValueChange={handleAssignRequest}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Reassign to..." />
+                      <SelectValue placeholder={dict?.maintenance?.reassignTo || "Reassign to..."} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="unassign">Unassign</SelectItem>
+                      <SelectItem value="unassign">{dict?.maintenance?.unassign || "Unassign"}</SelectItem>
                       {workers.map((worker) => (
                         <SelectItem key={worker.id} value={worker.id}>
                           {worker.name} ({worker.email})
@@ -906,16 +909,22 @@ export default function MaintenanceDetailPage() {
             <div className="flex flex-wrap gap-2">
               <Badge className={cn(
                 "border-0 text-white",
-                request.priority === 'High' ? 'bg-red-600' : 
+                request.priority === 'High' ? 'bg-red-600' :
                 request.priority === 'Medium' ? 'bg-yellow-600' : 'bg-green-600'
               )}>
-                {request.priority === 'High' && '⚠ '}{request.priority || 'Low'} Priority
+                {request.priority === 'High' && '⚠ '}
+                {request.priority === 'High' ? (dict?.common?.high || 'High') :
+                 request.priority === 'Medium' ? (dict?.common?.medium || 'Medium') :
+                 (dict?.common?.low || 'Low')} {dict?.maintenance?.priorityLabel || "Priority"}
               </Badge>
               <Badge className={cn(
                 "border-0 text-white",
                 request.status === 'New' ? 'bg-gray-600' :
                 request.status === 'In Progress' ? 'bg-blue-600' : 'bg-green-600'
               )}>
+                {request.status === 'New' ? (dict?.common?.new || 'New') :
+                 request.status === 'In Progress' ? (dict?.common?.inProgress || 'In Progress') :
+                 (dict?.common?.completed || 'Completed')}
               </Badge>
             </div>
             </CardContent>
@@ -925,7 +934,7 @@ export default function MaintenanceDetailPage() {
           {showChat && (
             <Card>
               <CardContent className="p-6">
-                <h3 className="text-xl font-bold mb-4">Chat</h3>
+                <h3 className="text-xl font-bold mb-4">{dict?.maintenance?.chat || "Chat"}</h3>
                 
                 <ScrollArea className="h-40 w-full mb-4" ref={chatViewportRef}>
                   <div className="space-y-3 pr-4">
@@ -972,7 +981,7 @@ export default function MaintenanceDetailPage() {
               
               <div className="flex w-full items-center gap-2">
                 <Textarea
-                  placeholder="Type a message..."
+                  placeholder={dict?.maintenance?.typeMessagePlaceholder || "Type a message..."}
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyDown={(e) => {

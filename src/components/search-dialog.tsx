@@ -24,6 +24,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from './ui/scroll-area';
 import { usePathname } from 'next/navigation';
+import { useTranslation } from '@/hooks/use-translation';
 
 interface SearchDialogProps {
   open: boolean;
@@ -67,6 +68,7 @@ async function searchData(query: string): Promise<SearchResults> {
 }
 
 export default function SearchDialog({ open, onOpenChange }: SearchDialogProps) {
+  const { dict } = useTranslation();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResults>({
     properties: [],
@@ -151,12 +153,12 @@ export default function SearchDialog({ open, onOpenChange }: SearchDialogProps) 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Search</DialogTitle>
+          <DialogTitle>{dict?.search?.title || "Search"}</DialogTitle>
         </DialogHeader>
         <div className="relative">
           <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search properties, tenants, workers, maintenance..."
+            placeholder={dict?.search?.inputPlaceholder || "Search properties, tenants, workers, maintenance..."}
             value={query}
             onChange={handleQueryChange}
             className="pl-10"
@@ -166,9 +168,9 @@ export default function SearchDialog({ open, onOpenChange }: SearchDialogProps) 
           {!hasQuery && (
             <div className="flex flex-col items-center justify-center text-center gap-4 py-16">
               <SearchIcon className="h-16 w-16 text-muted-foreground" />
-              <h2 className="text-xl font-bold">Search the application</h2>
+              <h2 className="text-xl font-bold">{dict?.search?.emptyTitle || "Search the application"}</h2>
               <p className="text-muted-foreground">
-                Find properties, tenants, workers, maintenance requests, units, leases, and more.
+                {dict?.search?.emptyDescription || "Find properties, tenants, workers, maintenance requests, units, leases, and more."}
               </p>
             </div>
           )}
@@ -181,7 +183,7 @@ export default function SearchDialog({ open, onOpenChange }: SearchDialogProps) 
 
           {hasQuery && !loading && !hasResults && (
             <div className="text-center py-16">
-              <p className="text-muted-foreground">No results found.</p>
+              <p className="text-muted-foreground">{dict?.search?.noResults || "No results found."}</p>
             </div>
           )}
 
@@ -192,7 +194,7 @@ export default function SearchDialog({ open, onOpenChange }: SearchDialogProps) 
                 <div className="space-y-2">
                   <h3 className="flex items-center gap-2 font-semibold">
                     <Building2 className="h-5 w-5" />
-                    Properties ({results.properties.length})
+                    {(dict?.search?.properties || "Properties ({count})").replace("{count}", String(results.properties.length))}
                   </h3>
                   <div className="grid gap-2">
                     {results.properties.map((property: any) => (
@@ -217,7 +219,7 @@ export default function SearchDialog({ open, onOpenChange }: SearchDialogProps) 
                 <div className="space-y-2">
                   <h3 className="flex items-center gap-2 font-semibold">
                     <Users className="h-5 w-5" />
-                    Tenants ({results.tenants.length})
+                    {(dict?.search?.tenants || "Tenants ({count})").replace("{count}", String(results.tenants.length))}
                   </h3>
                   <div className="grid gap-2">
                     {results.tenants.map((tenant: any) => (
@@ -242,7 +244,7 @@ export default function SearchDialog({ open, onOpenChange }: SearchDialogProps) 
                 <div className="space-y-2">
                   <h3 className="flex items-center gap-2 font-semibold">
                     <UserCog className="h-5 w-5" />
-                    Workers ({results.workers.length})
+                    {(dict?.search?.workers || "Workers ({count})").replace("{count}", String(results.workers.length))}
                   </h3>
                   <div className="grid gap-2">
                     {results.workers.map((worker: any) => (
@@ -267,7 +269,7 @@ export default function SearchDialog({ open, onOpenChange }: SearchDialogProps) 
                 <div className="space-y-2">
                   <h3 className="flex items-center gap-2 font-semibold">
                     <Wrench className="h-5 w-5" />
-                    Maintenance ({results.maintenance.length})
+                    {(dict?.search?.maintenance || "Maintenance ({count})").replace("{count}", String(results.maintenance.length))}
                   </h3>
                   <div className="grid gap-2">
                     {results.maintenance.map((req: any) => (
@@ -288,11 +290,17 @@ export default function SearchDialog({ open, onOpenChange }: SearchDialogProps) 
                                 : 'secondary'
                             }
                           >
-                            {req.priority}
+                            {req.priority === 'High' ? (dict?.common?.high || 'High') :
+                             req.priority === 'Medium' ? (dict?.common?.medium || 'Medium') :
+                             req.priority === 'Low' ? (dict?.common?.low || 'Low') : req.priority}
                           </Badge>
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {req.property?.title || req.property?.name} • {req.status}
+                          {req.property?.title || req.property?.name} • {
+                            req.status === 'New' ? (dict?.common?.new || 'New') :
+                            req.status === 'In Progress' ? (dict?.common?.inProgress || 'In Progress') :
+                            req.status === 'Completed' ? (dict?.common?.completed || 'Completed') : req.status
+                          }
                         </div>
                       </Link>
                     ))}
@@ -305,7 +313,7 @@ export default function SearchDialog({ open, onOpenChange }: SearchDialogProps) 
                 <div className="space-y-2">
                   <h3 className="flex items-center gap-2 font-semibold">
                     <Home className="h-5 w-5" />
-                    Units ({results.units.length})
+                    {(dict?.search?.units || "Units ({count})").replace("{count}", String(results.units.length))}
                   </h3>
                   <div className="grid gap-2">
                     {results.units.map((unit: any) => (
@@ -315,9 +323,9 @@ export default function SearchDialog({ open, onOpenChange }: SearchDialogProps) 
                         onClick={() => onOpenChange(false)}
                         className="block p-3 rounded-lg border hover:bg-muted"
                       >
-                        <div className="font-semibold">Unit {unit.label}</div>
+                        <div className="font-semibold">{(dict?.search?.unit || "Unit {label}").replace("{label}", unit.label)}</div>
                         <div className="text-sm text-muted-foreground">
-                          {unit.property?.title || unit.property?.name} • {unit.bedrooms} bed(s) • ${unit.rent}/month
+                          {unit.property?.title || unit.property?.name} • {unit.bedrooms} {dict?.search?.bedsSuffix || "bed(s)"} • ${unit.rent}{dict?.search?.perMonth || "/month"}
                         </div>
                       </Link>
                     ))}
@@ -330,7 +338,7 @@ export default function SearchDialog({ open, onOpenChange }: SearchDialogProps) 
                 <div className="space-y-2">
                   <h3 className="flex items-center gap-2 font-semibold">
                     <Calendar className="h-5 w-5" />
-                    Leases ({results.leases.length})
+                    {(dict?.search?.leases || "Leases ({count})").replace("{count}", String(results.leases.length))}
                   </h3>
                   <div className="grid gap-2">
                     {results.leases.map((lease: any) => (
@@ -342,7 +350,7 @@ export default function SearchDialog({ open, onOpenChange }: SearchDialogProps) 
                       >
                         <div className="font-semibold">{lease.resident}</div>
                         <div className="text-sm text-muted-foreground">
-                          {lease.unit?.property?.title || lease.unit?.property?.name} - Unit {lease.unit?.label} • ${lease.monthlyRent}/month
+                          {lease.unit?.property?.title || lease.unit?.property?.name} - {(dict?.search?.unit || "Unit {label}").replace("{label}", lease.unit?.label)} • ${lease.monthlyRent}{dict?.search?.perMonth || "/month"}
                         </div>
                       </Link>
                     ))}

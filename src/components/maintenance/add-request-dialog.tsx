@@ -25,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, Loader2 } from "lucide-react";
 import { User, useCurrentUser } from "@/hooks/use-current-user";
 import { Input } from "../ui/input";
+import { useTranslation } from "@/hooks/use-translation";
 
 type Worker = {
     id: string;
@@ -67,6 +68,7 @@ export default function AddRequestDialog({
   onAddRequest: (newRequest: any) => Promise<void>;
   triggerButton?: React.ReactNode;
 }) {
+  const { dict } = useTranslation();
   const [open, setOpen] = useState(false);
   const [issue, setIssue] = useState("");
   const [details, setDetails] = useState("");
@@ -176,37 +178,37 @@ export default function AddRequestDialog({
         {triggerButton || (
           <Button>
             <PlusCircle className="mr-2 h-4 w-4" />
-            Add Request
+            {dict?.maintenance?.addRequest || "Add Request"}
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>New Maintenance Request</DialogTitle>
+          <DialogTitle>{dict?.maintenance?.newMaintenanceRequestTitle || "New Maintenance Request"}</DialogTitle>
           <DialogDescription>
-            Fill out the details for the new maintenance request.
+            {dict?.maintenance?.newRequestDescription || "Fill out the details for the new maintenance request."}
           </DialogDescription>
         </DialogHeader>
-        
+
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin" />
-            <span className="ml-2">Loading data...</span>
+            <span className="ml-2">{dict?.maintenance?.loadingData || "Loading data..."}</span>
           </div>
         ) : (
           <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
             {/* Property Selection - Hidden for tenants */}
             {userRole !== 'tenant' && (
               <div className="space-y-2">
-                <Label htmlFor="property">Property</Label>
+                <Label htmlFor="property">{dict?.common?.property || "Property"}</Label>
                 {properties.length === 0 ? (
                   <div className="p-3 text-sm text-muted-foreground bg-muted rounded-md">
-                    No properties are available for maintenance requests. Please contact your administrator.
+                    {dict?.maintenance?.noPropertiesAvailable || "No properties are available for maintenance requests. Please contact your administrator."}
                   </div>
                 ) : (
                   <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
                     <SelectTrigger id="property">
-                      <SelectValue placeholder="Select a property" />
+                      <SelectValue placeholder={dict?.maintenance?.selectPropertyPlaceholder || "Select a property"} />
                     </SelectTrigger>
                     <SelectContent>
                       {properties.map(p => (
@@ -223,10 +225,10 @@ export default function AddRequestDialog({
             {/* Tenant Selection - Only for admins and workers */}
             {(userRole === 'admin' || userRole === 'worker') && (
               <div className="space-y-2">
-                <Label htmlFor="tenant">Tenant</Label>
+                <Label htmlFor="tenant">{dict?.maintenance?.tenant || "Tenant"}</Label>
                 <Select value={tenantId} onValueChange={setTenantId}>
                   <SelectTrigger id="tenant">
-                    <SelectValue placeholder="Select a tenant" />
+                    <SelectValue placeholder={dict?.maintenance?.selectTenantPlaceholder || "Select a tenant"} />
                   </SelectTrigger>
                   <SelectContent>
                     {tenants.map(t => (
@@ -239,23 +241,23 @@ export default function AddRequestDialog({
 
             {/* Issue - All roles can see this */}
             <div className="space-y-2">
-              <Label htmlFor="issue">Issue</Label>
+              <Label htmlFor="issue">{dict?.maintenance?.table?.issue || "Issue"}</Label>
               <Input
                 id="issue"
                 value={issue}
                 onChange={(e) => setIssue(e.target.value)}
-                placeholder="e.g., Leaky kitchen faucet"
+                placeholder={dict?.maintenance?.issuePlaceholder || "e.g., Leaky kitchen faucet"}
               />
             </div>
 
             {/* Details - All roles can see this */}
             <div className="space-y-2">
-              <Label htmlFor="details">Details</Label>
+              <Label htmlFor="details">{dict?.maintenance?.details || "Details"}</Label>
               <Textarea
                 id="details"
                 value={details}
                 onChange={(e) => setDetails(e.target.value)}
-                placeholder="Provide as much detail as possible..."
+                placeholder={dict?.maintenance?.detailsPlaceholder || "Provide as much detail as possible..."}
                 rows={4}
               />
             </div>
@@ -263,13 +265,13 @@ export default function AddRequestDialog({
             {/* Worker Assignment - Only for admins */}
             {userRole === 'admin' && (
               <div className="space-y-2">
-                <Label htmlFor="assign-worker">Assign Worker (Optional)</Label>
+                <Label htmlFor="assign-worker">{dict?.maintenance?.assignWorkerOptional || "Assign Worker (Optional)"}</Label>
                 <Select value={assignedWorkerId || "unassigned"} onValueChange={(value) => setAssignedWorkerId(value === "unassigned" ? null : value)}>
                   <SelectTrigger id="assign-worker">
-                    <SelectValue placeholder="Select a worker" />
+                    <SelectValue placeholder={dict?.maintenance?.selectWorkerPlaceholder || "Select a worker"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    <SelectItem value="unassigned">{dict?.common?.unassigned || "Unassigned"}</SelectItem>
                     {workers.map(w => (
                       <SelectItem key={w.id} value={w.id}>
                         {w.name} {w.email && `(${w.email})`}
@@ -279,13 +281,13 @@ export default function AddRequestDialog({
                 </Select>
               </div>
             )}
-            
+
             {/* Worker auto-assignment notice */}
             {userRole === 'worker' && (
               <div className="space-y-2">
                 <div className="p-3 text-sm bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-md">
                   <p className="text-blue-800 dark:text-blue-200">
-                    This request will be automatically assigned to you.
+                    {dict?.maintenance?.autoAssignedNotice || "This request will be automatically assigned to you."}
                   </p>
                 </div>
               </div>
@@ -294,10 +296,10 @@ export default function AddRequestDialog({
         )}
 
         <DialogFooter>
-          <Button 
-            onClick={handleSubmit} 
+          <Button
+            onClick={handleSubmit}
             disabled={
-              !tenantId || !issue || !selectedPropertyId || 
+              !tenantId || !issue || !selectedPropertyId ||
               loading || submitting ||
               (userRole !== 'tenant' && !tenantId) // Admin/Worker must select tenant
             }
@@ -305,10 +307,10 @@ export default function AddRequestDialog({
             {submitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Submitting...
+                {dict?.maintenance?.submitting || "Submitting..."}
               </>
             ) : (
-              "Submit Request"
+              dict?.maintenance?.submitRequest || "Submit Request"
             )}
           </Button>
         </DialogFooter>

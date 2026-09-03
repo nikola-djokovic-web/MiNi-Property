@@ -15,12 +15,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PlusCircle, Upload, File, X } from "lucide-react";
+import { useTranslation } from "@/hooks/use-translation";
 
 export default function AddDocumentDialog({
   onAddDocument,
 }: {
   onAddDocument: (document: any) => void;
 }) {
+  const { dict } = useTranslation();
   const [open, setOpen] = useState(false);
   const [type, setType] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -63,32 +65,32 @@ export default function AddDocumentDialog({
       <DialogTrigger asChild>
         <Button>
           <PlusCircle className="mr-2 h-4" />
-          Upload Document
+          {dict?.documents?.uploadDocument || "Upload Document"}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Upload New Document</DialogTitle>
+          <DialogTitle>{dict?.documents?.newDocument || "Upload New Document"}</DialogTitle>
           <DialogDescription>
-            Select a file and specify its type.
+            {dict?.documents?.newDocumentDescription || "Select a file and specify its type."}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-6 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="type" className="text-right">
-              Document Type
+              {dict?.documents?.documentType || "Document Type"}
             </Label>
             <Input
               id="type"
               value={type}
               onChange={(e) => setType(e.target.value)}
               className="col-span-3"
-              placeholder="e.g. Lease, Invoice, Notice"
+              placeholder={dict?.documents?.documentTypePlaceholder || "e.g. Lease, Invoice, Notice"}
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="file-upload" className="text-right">
-              File
+              {dict?.documents?.file || "File"}
             </Label>
              <div className="col-span-3">
                 <Input id="file-upload" type="file" onChange={handleFileChange} ref={fileInputRef} className="hidden" />
@@ -96,7 +98,7 @@ export default function AddDocumentDialog({
                     <Button asChild variant="outline">
                         <Label htmlFor="file-upload" className="cursor-pointer w-full">
                             <Upload className="mr-2 h-4 w-4" />
-                            Choose File
+                            {dict?.documents?.chooseFile || "Choose File"}
                         </Label>
                     </Button>
                 ) : (
@@ -115,7 +117,7 @@ export default function AddDocumentDialog({
         </div>
         <DialogFooter>
           <Button type="submit" onClick={handleSubmit} disabled={!file || !type}>
-            Upload Document
+            {dict?.documents?.uploadDocument || "Upload Document"}
           </Button>
         </DialogFooter>
       </DialogContent>

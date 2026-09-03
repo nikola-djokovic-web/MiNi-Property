@@ -29,6 +29,7 @@ import EditWorkerDialog from "@/components/workers/edit-worker-dialog";
 import AddWorkerDialog from "@/components/workers/add-worker-dialog";
 import { usePathname } from "next/navigation";
 import eventBus from "@/lib/events";
+import { useTranslation } from "@/hooks/use-translation";
 
 const TENANT_ID = process.env.NEXT_PUBLIC_DEMO_TENANT_ID ?? "";
 async function apiGet<T>(url: string): Promise<T> {
@@ -73,6 +74,7 @@ function getStatusVariant(status: string) {
 }
 
 export default function WorkersPage() {
+  const { dict } = useTranslation();
   const [workers, setWorkers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const pathname = usePathname();
@@ -177,8 +179,8 @@ export default function WorkersPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Workers"
-        description="View and manage your maintenance workers."
+        title={dict?.workers?.title || "Workers"}
+        description={dict?.workers?.description || "View and manage your maintenance workers."}
       >
         <AddWorkerDialog onAddWorker={handleAddWorker} />
       </PageHeader>
@@ -187,12 +189,12 @@ export default function WorkersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
+                <TableHead>{dict?.workers?.table?.name || "Name"}</TableHead>
                 <TableHead className="hidden md:table-cell">
-                  Assigned Properties
+                  {dict?.workers?.table?.assignedProperties || "Assigned Properties"}
                 </TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{dict?.workers?.table?.status || "Status"}</TableHead>
+                <TableHead className="text-right">{dict?.workers?.table?.actions || "Actions"}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -202,7 +204,7 @@ export default function WorkersPage() {
                     colSpan={4}
                     className="py-8 text-center text-muted-foreground"
                   >
-                    Loading workers…
+                    {dict?.common?.loading || "Loading workers…"}
                   </TableCell>
                 </TableRow>
               ) : workers.length === 0 ? (
@@ -211,7 +213,7 @@ export default function WorkersPage() {
                     colSpan={4}
                     className="py-8 text-center text-muted-foreground"
                   >
-                    No workers yet.
+                    {dict?.workers?.noWorkersYet || "No workers yet."}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -241,7 +243,7 @@ export default function WorkersPage() {
                       <TableCell className="hidden md:table-cell">
                         {assignedProperties.length > 0
                           ? assignedProperties.map((p) => p.title).join(", ")
-                          : "None"}
+                          : (dict?.workers?.none || "None")}
                       </TableCell>
                       <TableCell>
                         <Badge variant={getStatusVariant(worker.status)}>
@@ -263,11 +265,11 @@ export default function WorkersPage() {
                                   )}
                                 >
                                   <Eye className="h-4 w-4" />
-                                  <span className="sr-only">View Details</span>
+                                  <span className="sr-only">{dict?.common?.viewDetails || "View Details"}</span>
                                 </Link>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p>View Details</p>
+                                <p>{dict?.common?.viewDetails || "View Details"}</p>
                               </TooltipContent>
                             </Tooltip>
 
@@ -281,11 +283,11 @@ export default function WorkersPage() {
                               <TooltipTrigger asChild>
                                 <Button variant="ghost" size="icon">
                                   <Mail className="h-4 w-4" />
-                                  <span className="sr-only">Send Message</span>
+                                  <span className="sr-only">{dict?.workers?.sendMessage || "Send Message"}</span>
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p>Send Message</p>
+                                <p>{dict?.workers?.sendMessage || "Send Message"}</p>
                               </TooltipContent>
                             </Tooltip>
 

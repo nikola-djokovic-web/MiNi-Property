@@ -13,8 +13,9 @@ import { PlusCircle, Check } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
+import { useTranslation } from "@/hooks/use-translation";
 
-const roles = [
+const fallbackRoles = [
   {
     name: "Admin",
     description: "Full access to all features and settings.",
@@ -51,7 +52,9 @@ const roles = [
 export default function RolesPage() {
   const { user } = useCurrentUser();
   const pathname = usePathname();
-  
+  const { dict } = useTranslation();
+  const roles = dict?.settings?.roles?.items || fallbackRoles;
+
   // Redirect non-admin users to theme settings
   useEffect(() => {
     if (user && user.role !== 'admin') {
@@ -70,15 +73,15 @@ export default function RolesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold font-headline">
-            Roles &amp; Permissions
+            {dict?.settings?.roles?.title || "Roles & Permissions"}
           </h2>
           <p className="text-muted-foreground">
-            Define roles to control access levels across your team.
+            {dict?.settings?.roles?.description || "Manage what each role can access."}
           </p>
         </div>
         <Button>
           <PlusCircle className="mr-2" />
-          Add Role
+          {dict?.settings?.roles?.addRole || "Add Role"}
         </Button>
       </div>
 

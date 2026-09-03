@@ -176,7 +176,7 @@ const MaintenanceTable = ({
       {requests.length > 5 && (
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <span className="text-sm text-muted-foreground">Show:</span>
+            <span className="text-sm text-muted-foreground">{dict?.common?.show || "Show"}:</span>
             <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(parseInt(value))}>
               <SelectTrigger className="w-20">
                 <SelectValue />
@@ -187,9 +187,9 @@ const MaintenanceTable = ({
                 <SelectItem value="20">20</SelectItem>
               </SelectContent>
             </Select>
-            <span className="text-sm text-muted-foreground">per page</span>
+            <span className="text-sm text-muted-foreground">{dict?.common?.perPage || "per page"}</span>
           </div>
-          
+
           {totalPages > 1 && (
             <div className="flex items-center space-x-2">
               <Button
@@ -198,10 +198,10 @@ const MaintenanceTable = ({
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
               >
-                Previous
+                {dict?.common?.previous || "Previous"}
               </Button>
               <span className="text-sm text-muted-foreground">
-                Page {currentPage} of {totalPages}
+                {dict?.common?.page || "Page"} {currentPage} {dict?.common?.of || "of"} {totalPages}
               </span>
               <Button
                 variant="outline"
@@ -209,7 +209,7 @@ const MaintenanceTable = ({
                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
               >
-                Next
+                {dict?.common?.next || "Next"}
               </Button>
             </div>
           )}
@@ -275,7 +275,7 @@ const MaintenanceTable = ({
                       </Link>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>View details</p>
+                      <p>{dict?.common?.viewDetails || "View details"}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -296,10 +296,10 @@ const MaintenanceTable = ({
           onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
           disabled={currentPage === 1}
         >
-          Previous
+          {dict?.common?.previous || "Previous"}
         </Button>
         <span className="text-sm text-muted-foreground">
-          Page {currentPage} of {totalPages} ({requests.length} total)
+          {dict?.common?.page || "Page"} {currentPage} {dict?.common?.of || "of"} {totalPages} ({requests.length} total)
         </span>
         <Button
           variant="outline"
@@ -307,7 +307,7 @@ const MaintenanceTable = ({
           onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
           disabled={currentPage === totalPages}
         >
-          Next
+          {dict?.common?.next || "Next"}
         </Button>
       </div>
     )}
@@ -662,7 +662,7 @@ export default function PropertiesPageContent({ lang }: { lang: Locale }) {
           <CardContent className="p-6">
             <div className="flex items-center justify-center">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              <span className="ml-2 text-muted-foreground">Loading properties...</span>
+              <span className="ml-2 text-muted-foreground">{dict?.properties?.loadingProperties || "Loading properties..."}</span>
             </div>
           </CardContent>
         </Card>
@@ -713,7 +713,7 @@ export default function PropertiesPageContent({ lang }: { lang: Locale }) {
                             </CardDescription>
                           </CardHeader>
                           <CardFooter className="p-3 pt-0 justify-between items-center text-xs">
-                            <span>Requests</span>
+                            <span>{dict?.properties?.requests || "Requests"}</span>
                             <Badge variant="default" className="bg-primary">
                               {requestCount}
                             </Badge>
@@ -731,8 +731,8 @@ export default function PropertiesPageContent({ lang }: { lang: Locale }) {
             {/* pagination */}
             <div className="mt-2 flex items-center justify-between">
               <span className="text-xs text-muted-foreground">
-                Showing {(page - 1) * pageSize + 1}–
-                {Math.min(page * pageSize, filteredProperties.length)} of{" "}
+                {dict?.common?.showing || "Showing"} {(page - 1) * pageSize + 1}–
+                {Math.min(page * pageSize, filteredProperties.length)} {dict?.common?.of || "of"}{" "}
                 {filteredProperties.length}
               </span>
               <div className="flex items-center gap-2 mb-1">
@@ -742,10 +742,10 @@ export default function PropertiesPageContent({ lang }: { lang: Locale }) {
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page <= 1}
                 >
-                  Prev
+                  {dict?.common?.prev || "Prev"}
                 </Button>
                 <span className="text-xs">
-                  Page {page} / {pageCount}
+                  {dict?.common?.page || "Page"} {page} / {pageCount}
                 </span>
                 <Button
                   variant="outline"
@@ -753,7 +753,7 @@ export default function PropertiesPageContent({ lang }: { lang: Locale }) {
                   onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
                   disabled={page >= pageCount}
                 >
-                  Next
+                  {dict?.common?.next || "Next"}
                 </Button>
               </div>
             </div>
@@ -780,7 +780,7 @@ export default function PropertiesPageContent({ lang }: { lang: Locale }) {
                               />
                             ) : (
                               <div className="absolute inset-0 grid place-items-center bg-muted text-muted-foreground text-xs">
-                                No image
+                                {dict?.common?.noImage || "No image"}
                               </div>
                             )}
                           </button>
@@ -796,7 +796,7 @@ export default function PropertiesPageContent({ lang }: { lang: Locale }) {
                             />
                           ) : (
                             <div className="h-[400px] w-full grid place-items-center bg-muted text-muted-foreground rounded-md">
-                              No image available
+                              {dict?.common?.noImageAvailable || "No image available"}
                             </div>
                           )}
                         </DialogContent>
@@ -811,7 +811,7 @@ export default function PropertiesPageContent({ lang }: { lang: Locale }) {
                     <div className="flex items-center gap-2 text-sm">
                       <UserCog className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">
-                        Assigned to:{" "}
+                        {dict?.common?.assignedTo || "Assigned to"}:{" "}
                         {assignedWorker ? (
                           <Link
                             href={`/${lang}/workers/${assignedWorker.id}`}
@@ -820,18 +820,18 @@ export default function PropertiesPageContent({ lang }: { lang: Locale }) {
                             {assignedWorker.name}
                           </Link>
                         ) : (
-                          "Unassigned"
+                          dict?.common?.unassigned || "Unassigned"
                         )}
                       </span>
                       {user.role === "admin" && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="outline" size="sm">
-                              Change
+                              {dict?.common?.change || "Change"}
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="start">
-                            <DropdownMenuLabel>Assign Worker</DropdownMenuLabel>
+                            <DropdownMenuLabel>{dict?.properties?.assignWorker || "Assign Worker"}</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             {workers.map((worker) => (
                               <DropdownMenuItem
@@ -848,7 +848,7 @@ export default function PropertiesPageContent({ lang }: { lang: Locale }) {
                                 handleAssignWorker(property.id, null)
                               }
                             >
-                              Unassigned
+                              {dict?.common?.unassigned || "Unassigned"}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -859,8 +859,7 @@ export default function PropertiesPageContent({ lang }: { lang: Locale }) {
                   <CardFooter className="flex-col items-start gap-4 border-t p-4">
                     <div className="flex w-full items-center justify-between">
                       <h4 className="font-semibold">
-                        Maintenance Requests (
-                        {selectedMaintenanceRequests.length})
+                        {(dict?.properties?.maintenanceRequestsCount || "Maintenance Requests ({count})").replace("{count}", String(selectedMaintenanceRequests.length))}
                       </h4>
                       <AddRequestDialog
                         propertyId={property.id}
@@ -876,7 +875,7 @@ export default function PropertiesPageContent({ lang }: { lang: Locale }) {
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground">
-                        No maintenance requests for this property.
+                        {dict?.properties?.noMaintenanceForProperty || "No maintenance requests for this property."}
                       </p>
                     )}
                   </CardFooter>
@@ -889,9 +888,9 @@ export default function PropertiesPageContent({ lang }: { lang: Locale }) {
         <Card>
           <CardContent className="p-6">
             <p className="text-center text-muted-foreground">
-              {user?.role === 'worker' 
-                ? "No properties assigned to your account."
-                : "No properties found."}
+              {user?.role === 'worker'
+                ? (dict?.properties?.noPropertiesAssigned || "No properties assigned to your account.")
+                : (dict?.properties?.noPropertiesFound || "No properties found.")}
             </p>
           </CardContent>
         </Card>

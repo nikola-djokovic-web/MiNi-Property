@@ -18,6 +18,7 @@ import AddDocumentDialog from "@/components/documents/add-document-dialog";
 import DeleteDocumentDialog from "@/components/documents/delete-document-dialog";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
 
 type DocumentItem = {
   id: string;
@@ -42,6 +43,7 @@ export default function DocumentsPage() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { dict } = useTranslation();
 
   const fetchDocuments = async () => {
     try {
@@ -51,7 +53,7 @@ export default function DocumentsPage() {
       setDocuments(data);
     } catch (error) {
       console.error(error);
-      toast({ title: 'Failed to load documents', variant: 'destructive' });
+      toast({ title: dict?.documents?.loadFailed || 'Failed to load documents', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -75,7 +77,7 @@ export default function DocumentsPage() {
       const { data } = await res.json();
       setDocuments((prev) => [data, ...prev]);
     } catch (error: any) {
-      toast({ title: 'Failed to upload document', description: error.message, variant: 'destructive' });
+      toast({ title: dict?.documents?.uploadFailed || 'Failed to upload document', description: error.message, variant: 'destructive' });
     }
   };
 
@@ -87,15 +89,15 @@ export default function DocumentsPage() {
       if (!res.ok) throw new Error('Delete failed');
     } catch (error) {
       setDocuments(previous);
-      toast({ title: 'Failed to delete document', variant: 'destructive' });
+      toast({ title: dict?.documents?.deleteFailed || 'Failed to delete document', variant: 'destructive' });
     }
   };
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Documents"
-        description="Securely store and manage your important files."
+        title={dict?.documents?.title || "Documents"}
+        description={dict?.documents?.description || "Securely store and manage your important files."}
       >
         <AddDocumentDialog onAddDocument={handleAddDocument} />
       </PageHeader>
@@ -104,13 +106,13 @@ export default function DocumentsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead className="hidden sm:table-cell">Type</TableHead>
+                <TableHead>{dict?.documents?.table?.name || "Name"}</TableHead>
+                <TableHead className="hidden sm:table-cell">{dict?.documents?.table?.type || "Type"}</TableHead>
                 <TableHead className="hidden md:table-cell">
-                  Upload Date
+                  {dict?.documents?.table?.uploadDate || "Upload Date"}
                 </TableHead>
-                <TableHead>Size</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{dict?.documents?.table?.size || "Size"}</TableHead>
+                <TableHead className="text-right">{dict?.documents?.table?.actions || "Actions"}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -119,7 +121,7 @@ export default function DocumentsPage() {
                   {!loading && documents.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                        No documents uploaded yet.
+                        {dict?.documents?.noDocumentsYet || "No documents uploaded yet."}
                       </TableCell>
                     </TableRow>
                   )}

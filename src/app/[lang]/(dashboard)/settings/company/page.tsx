@@ -9,10 +9,12 @@ import { CompanyLogo } from "@/components/ui/mini-property-logo";
 import { Upload, X } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
 
 export default function CompanySettingsPage() {
   const { user, updateUser } = useCurrentUser();
   const { toast } = useToast();
+  const { dict } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [companyName, setCompanyName] = useState(user?.companyName || "");
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -32,8 +34,8 @@ export default function CompanySettingsPage() {
       // Validate file type
       if (!file.type.startsWith('image/')) {
         toast({
-          title: "Invalid file type",
-          description: "Please select an image file (PNG, JPG, SVG, etc.)",
+          title: dict?.settings?.company?.invalidFileType || "Invalid file type",
+          description: dict?.settings?.company?.invalidFileTypeDescription || "Please select an image file (PNG, JPG, SVG, etc.)",
           variant: "destructive",
         });
         return;
@@ -42,8 +44,8 @@ export default function CompanySettingsPage() {
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         toast({
-          title: "File too large",
-          description: "Please select an image smaller than 5MB",
+          title: dict?.common?.fileTooLarge || "File too large",
+          description: dict?.common?.fileTooLargeDescription || "Please select an image smaller than 5MB",
           variant: "destructive",
         });
         return;
@@ -90,15 +92,15 @@ export default function CompanySettingsPage() {
       setLogoFile(null);
       
       toast({
-        title: "Logo deleted",
-        description: "Your company logo has been removed successfully.",
+        title: dict?.settings?.company?.logoDeleted || "Logo deleted",
+        description: dict?.settings?.company?.logoDeletedDescription || "Your company logo has been removed successfully.",
       });
-      
+
     } catch (error) {
       console.error('Error deleting logo:', error);
       toast({
-        title: "Error deleting logo",
-        description: "There was a problem deleting your logo. Please try again.",
+        title: dict?.settings?.company?.errorDeletingLogo || "Error deleting logo",
+        description: dict?.settings?.company?.errorDeletingLogoDescription || "There was a problem deleting your logo. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -159,15 +161,15 @@ export default function CompanySettingsPage() {
       setLogoPreview(logoUrl);
       
       toast({
-        title: "Settings saved",
-        description: "Your company settings have been updated successfully.",
+        title: dict?.settings?.company?.saved || "Company settings saved",
+        description: dict?.settings?.company?.savedDescription || "Your company settings have been updated successfully.",
       });
-      
+
     } catch (error) {
       console.error('Error saving company settings:', error);
       toast({
-        title: "Error saving settings",
-        description: "There was a problem saving your company settings. Please try again.",
+        title: dict?.settings?.company?.errorSavingSettings || "Error saving settings",
+        description: dict?.settings?.company?.errorSavingSettingsDescription || "There was a problem saving your company settings. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -180,8 +182,8 @@ export default function CompanySettingsPage() {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
-          <h2 className="text-lg font-semibold">Access Denied</h2>
-          <p className="text-muted-foreground">You don't have permission to access company settings.</p>
+          <h2 className="text-lg font-semibold">{dict?.common?.accessDenied || "Access Denied"}</h2>
+          <p className="text-muted-foreground">{dict?.settings?.company?.accessDeniedDescription || "You don't have permission to access company settings."}</p>
         </div>
       </div>
     );
@@ -191,35 +193,35 @@ export default function CompanySettingsPage() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Company Information</CardTitle>
+          <CardTitle>{dict?.settings?.company?.companyInformation || "Company Information"}</CardTitle>
           <CardDescription>
-            Update your company name and logo. The logo will appear at the top of the sidebar and clicking it will navigate to the dashboard. The MiNi Property logo will always remain at the bottom of the sidebar.
+            {dict?.settings?.company?.companyInfoDescription || "Update your company name and logo. The logo will appear at the top of the sidebar and clicking it will navigate to the dashboard. The MiNi Property logo will always remain at the bottom of the sidebar."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="companyName">Company Name</Label>
+            <Label htmlFor="companyName">{dict?.settings?.company?.companyName || "Company Name"}</Label>
             <Input
               id="companyName"
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
-              placeholder="Enter your company name"
+              placeholder={dict?.settings?.company?.companyNamePlaceholder || "Enter your company name"}
               maxLength={50}
             />
             <p className="text-xs text-muted-foreground">
-              This name will appear in the sidebar and throughout the application.
+              {dict?.settings?.company?.companyNameHint || "This name will appear in the sidebar and throughout the application."}
             </p>
           </div>
 
           <div className="space-y-4">
-            <Label>Company Logo</Label>
-            
+            <Label>{dict?.settings?.company?.companyLogo || "Company Logo"}</Label>
+
             {/* Logo Preview */}
             <div className="flex items-center gap-4">
               <div className="border-2 border-dashed border-muted rounded-lg p-4">
                 <CompanyLogo
                   logoUrl={logoPreview}
-                  companyName={companyName || "Company"}
+                  companyName={companyName || (dict?.settings?.company?.companyFallback || "Company")}
                   size="lg"
                   fallback={false}
                 />
@@ -234,9 +236,9 @@ export default function CompanySettingsPage() {
                     onClick={() => document.getElementById('logo-upload')?.click()}
                   >
                     <Upload className="w-4 h-4 mr-2" />
-                    {logoPreview ? 'Change Logo' : 'Upload Logo'}
+                    {logoPreview ? (dict?.settings?.company?.changeLogo || 'Change Logo') : (dict?.settings?.company?.uploadLogo || 'Upload Logo')}
                   </Button>
-                  
+
                   {logoPreview && (
                     <Button
                       type="button"
@@ -245,10 +247,10 @@ export default function CompanySettingsPage() {
                       onClick={handleRemoveLogo}
                     >
                       <X className="w-4 h-4 mr-2" />
-                      Remove
+                      {dict?.common?.remove || "Remove"}
                     </Button>
                   )}
-                  
+
                   {user?.companyLogo && !logoFile && (
                     <Button
                       type="button"
@@ -258,14 +260,13 @@ export default function CompanySettingsPage() {
                       disabled={isLoading}
                     >
                       <X className="w-4 h-4 mr-2" />
-                      Delete Current
+                      {dict?.settings?.company?.deleteCurrent || "Delete Current"}
                     </Button>
                   )}
                 </div>
-                
+
                 <p className="text-xs text-muted-foreground">
-                  Recommended: Square image, at least 128x128px. Max file size: 5MB.
-                  Supported formats: PNG, JPG, SVG, WebP. Logo will be clickable and navigate to dashboard.
+                  {dict?.settings?.company?.logoRequirements || "Recommended: Square image, at least 128x128px. Max file size: 5MB. Supported formats: PNG, JPG, SVG, WebP. Logo will be clickable and navigate to dashboard."}
                 </p>
               </div>
             </div>
@@ -280,12 +281,12 @@ export default function CompanySettingsPage() {
           </div>
 
           <div className="flex justify-end pt-4">
-            <Button 
-              onClick={handleSave} 
+            <Button
+              onClick={handleSave}
               disabled={isLoading}
               className="min-w-24"
             >
-              {isLoading ? "Saving..." : "Save Changes"}
+              {isLoading ? (dict?.common?.saving || "Saving...") : (dict?.common?.saveChanges || "Save Changes")}
             </Button>
           </div>
         </CardContent>
@@ -294,20 +295,20 @@ export default function CompanySettingsPage() {
       {/* Preview Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Preview</CardTitle>
+          <CardTitle>{dict?.common?.preview || "Preview"}</CardTitle>
           <CardDescription>
-            See how your company branding will appear in the sidebar. The logo will be clickable and navigate to the dashboard.
+            {dict?.settings?.company?.previewDescription || "See how your company branding will appear in the sidebar. The logo will be clickable and navigate to the dashboard."}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div>
-              <h4 className="text-sm font-medium mb-2">Sidebar Preview</h4>
+              <h4 className="text-sm font-medium mb-2">{dict?.settings?.company?.sidebarPreview || "Sidebar Preview"}</h4>
               <div className="border rounded-lg p-4 bg-muted/50">
                 <div className="flex flex-col items-center gap-2">
-                  <CompanyLogo 
+                  <CompanyLogo
                     logoUrl={logoPreview}
-                    companyName={companyName || "Company"}
+                    companyName={companyName || (dict?.settings?.company?.companyFallback || "Company")}
                     size="lg"
                   />
                   {companyName && (

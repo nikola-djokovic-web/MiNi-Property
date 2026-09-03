@@ -24,6 +24,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { PlusCircle } from "lucide-react";
+import { useTranslation } from "@/hooks/use-translation";
 
 const addWorkerSchema = z.object({
   name: z.string().trim().optional(),
@@ -37,6 +38,7 @@ export default function AddWorkerDialog({
 }: {
   onAddWorker: (worker: { name?: string; email: string }) => void | Promise<void>;
 }) {
+  const { dict } = useTranslation();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -67,14 +69,14 @@ export default function AddWorkerDialog({
       <DialogTrigger asChild>
         <Button>
           <PlusCircle className="mr-2 h-4 w-4" />
-          Add Worker
+          {dict?.workers?.addWorker || "Add Worker"}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md" title="Add worker">
         <DialogHeader>
-          <DialogTitle>Add New Worker</DialogTitle>
+          <DialogTitle>{dict?.workers?.newWorker || "Add New Worker"}</DialogTitle>
           <DialogDescription>
-            Enter the worker's name (optional) and email. They'll finish registration and set their password.
+            {dict?.workers?.newWorkerDescription || "Enter the worker's name (optional) and email. They'll finish registration and set their password."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -84,7 +86,7 @@ export default function AddWorkerDialog({
               name="name"
               render={({ field }) => (
                 <FormItem className="grid grid-cols-4 items-center gap-4 space-y-0">
-                  <FormLabel className="text-right">Name</FormLabel>
+                  <FormLabel className="text-right">{dict?.common?.name || "Name"}</FormLabel>
                   <div className="col-span-3">
                     <FormControl>
                       <Input placeholder="e.g. Bob the Builder" autoComplete="name" {...field} />
@@ -99,7 +101,7 @@ export default function AddWorkerDialog({
               name="email"
               render={({ field }) => (
                 <FormItem className="grid grid-cols-4 items-center gap-4 space-y-0">
-                  <FormLabel className="text-right">Email</FormLabel>
+                  <FormLabel className="text-right">{dict?.common?.email || "Email"}</FormLabel>
                   <div className="col-span-3">
                     <FormControl>
                       <Input type="email" placeholder="e.g. worker@example.com" autoComplete="email" {...field} />
@@ -111,10 +113,10 @@ export default function AddWorkerDialog({
             />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancel
+                {dict?.common?.cancel || "Cancel"}
               </Button>
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Inviting..." : "Invite Worker"}
+                {submitting ? (dict?.workers?.inviting || "Inviting...") : (dict?.workers?.inviteWorker || "Invite Worker")}
               </Button>
             </DialogFooter>
           </form>

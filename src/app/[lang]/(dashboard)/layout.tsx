@@ -25,14 +25,18 @@ export default async function DashboardLayout({
 
   return (
     <DashboardLayoutClient lang={lang}>
-      <div className="flex min-h-screen w-full">
+      <div className="flex min-h-screen w-full overflow-x-hidden">
         <AppSidebar />
         {/* AppSidebar's <aside> is `fixed`, so it doesn't reserve layout space -
             this sm:pl-20 compensates for its width so it doesn't overlap content. */}
-        <div className="flex flex-1 flex-col sm:pl-20">
+        {/* min-w-0 stops wide content (e.g. tables wrapped in overflow-auto)
+            from expanding this flex column past the viewport - flex/grid
+            items default to min-width: auto, which ignores overflow-auto
+            on a descendant unless an ancestor resets it. */}
+        <div className="flex min-w-0 flex-1 flex-col sm:pl-20">
           <AppHeader />
-          <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-            <div className="mx-auto w-full max-w-screen-2xl">{children}</div>
+          <main className="grid min-w-0 flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
+            <div className="mx-auto w-full min-w-0 max-w-screen-2xl">{children}</div>
           </main>
         </div>
       </div>

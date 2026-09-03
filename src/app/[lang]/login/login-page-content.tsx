@@ -11,7 +11,7 @@ import { useCurrentUser, UserRole } from "@/hooks/use-current-user";
 import { useTranslation } from "@/hooks/use-translation";
 
 export default function LoginPageContent() {
-  const dict = useTranslation();
+  const { dict } = useTranslation();
   const pathname = usePathname();
   const lang = pathname.split("/")[1] || "en";
   const router = useRouter();

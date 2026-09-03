@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { useCurrentUser } from '@/hooks/use-current-user';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { useTranslation } from '@/hooks/use-translation';
 
 export type Message = {
   id: string;
@@ -29,6 +30,7 @@ export type Message = {
 
 function SubmitButton() {
   const { pending } = useFormStatus();
+  const { dict } = useTranslation();
   return (
     <Button type="submit" size="icon" disabled={pending}>
       {pending ? (
@@ -36,19 +38,20 @@ function SubmitButton() {
       ) : (
         <ArrowRight className="h-4 w-4" />
       )}
-      <span className="sr-only">Send message</span>
+      <span className="sr-only">{dict?.ai?.chatbot?.sendMessageSr || "Send message"}</span>
     </Button>
   );
 }
 
 export default function AIChatbotPage() {
   const { user } = useCurrentUser();
+  const { dict } = useTranslation();
   const initialState: ChatState = {
     messages: [
       {
         id: 'init',
         role: 'assistant',
-        text: 'Hello! I am your AI Assistant. How can I help you today? You can ask me about rent payments, maintenance, and more.',
+        text: dict?.ai?.chatbot?.welcomeMessage || 'Hello! I am your AI Assistant. How can I help you today? You can ask me about rent payments, maintenance, and more.',
       },
     ],
     error: null,
@@ -62,7 +65,7 @@ export default function AIChatbotPage() {
     if (state.error) {
       toast({
         variant: 'destructive',
-        title: 'Chat Error',
+        title: dict?.ai?.chatbot?.chatError || 'Chat Error',
         description: state.error,
       });
     }
@@ -81,8 +84,8 @@ export default function AIChatbotPage() {
   return (
     <div className="flex flex-col gap-6 h-[calc(100vh-10rem)]">
       <PageHeader
-        title="AI Assistant"
-        description="Ask questions about your property and lease."
+        title={dict?.ai?.chatbot?.title || "AI Assistant"}
+        description={dict?.ai?.chatbot?.description || "Ask questions and get instant answers."}
       />
       <Card className="flex-1 flex flex-col">
         <CardContent className="p-0 flex-1 flex flex-col">
@@ -139,7 +142,7 @@ export default function AIChatbotPage() {
             <Input
               id="question"
               name="question"
-              placeholder="Ask a question..."
+              placeholder={dict?.ai?.chatbot?.placeholder || "Type your message..."}
               required
             />
             <SubmitButton />

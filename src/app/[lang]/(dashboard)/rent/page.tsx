@@ -24,24 +24,7 @@ import PageHeader from "@/components/page-header";
 import SendMessageDialog from "@/components/tenants/send-message-dialog";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useCurrentUser } from "@/hooks/use-current-user";
-
-const rentStats = [
-  {
-    title: "Total Collected (July)",
-    value: "$64,350",
-    icon: <CheckCircle2 className="size-5 text-accent" />,
-  },
-  {
-    title: "Overdue",
-    value: "$2,050",
-    icon: <AlertTriangle className="size-5 text-destructive" />,
-  },
-  {
-    title: "Upcoming (August)",
-    value: "$68,500",
-    icon: <DollarSign className="size-5 text-muted-foreground" />,
-  },
-];
+import { useTranslation } from "@/hooks/use-translation";
 
 function getStatusVariant(status: string) {
   switch (status) {
@@ -56,12 +39,42 @@ function getStatusVariant(status: string) {
 
 export default function RentPage() {
   const { user } = useCurrentUser();
+  const { dict } = useTranslation();
+
+  const rentStats = [
+    {
+      title: dict?.rent?.totalCollectedLabel || "Total Collected (July)",
+      value: "$64,350",
+      icon: <CheckCircle2 className="size-5 text-accent" />,
+    },
+    {
+      title: dict?.rent?.overdueLabel || "Overdue",
+      value: "$2,050",
+      icon: <AlertTriangle className="size-5 text-destructive" />,
+    },
+    {
+      title: dict?.rent?.upcomingLabel || "Upcoming (August)",
+      value: "$68,500",
+      icon: <DollarSign className="size-5 text-muted-foreground" />,
+    },
+  ];
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "Paid":
+        return dict?.rent?.statusPaid || "Paid";
+      case "Overdue":
+        return dict?.rent?.statusOverdue || "Overdue";
+      default:
+        return status;
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Rent Collection"
-        description="Monitor and manage rent payments."
+        title={dict?.rent?.title || "Rent Collection"}
+        description={dict?.rent?.description || "Track rent payments across your properties."}
       />
       <div className="grid gap-4 md:grid-cols-3">
         {rentStats.map((stat) => (
@@ -81,9 +94,9 @@ export default function RentPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Payment History</CardTitle>
+          <CardTitle>{dict?.rent?.paymentHistory || "Payment History"}</CardTitle>
           <CardDescription>
-            A log of recent rent payment transactions for this month.
+            {dict?.rent?.paymentHistoryDescription || "A log of recent rent payment transactions for this month."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -91,11 +104,11 @@ export default function RentPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Tenant</TableHead>
-                  <TableHead className="hidden sm:table-cell">Date</TableHead>
-                  <TableHead className="hidden sm:table-cell">Status</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{dict?.properties?.table?.tenant || "Tenant"}</TableHead>
+                  <TableHead className="hidden sm:table-cell">{dict?.common?.date || "Date"}</TableHead>
+                  <TableHead className="hidden sm:table-cell">{dict?.common?.status || "Status"}</TableHead>
+                  <TableHead>{dict?.common?.amount || "Amount"}</TableHead>
+                  <TableHead className="text-right">{dict?.common?.actions || "Actions"}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -112,7 +125,7 @@ export default function RentPage() {
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         <Badge variant={getStatusVariant(payment.status)}>
-                          {payment.status}
+                          {getStatusLabel(payment.status)}
                         </Badge>
                       </TableCell>
                       <TableCell

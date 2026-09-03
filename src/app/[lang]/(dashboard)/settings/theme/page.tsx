@@ -14,14 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
-
-// Simple fallback translations to avoid server-only import issues
-const translations = {
-  title: "Theme Settings",
-  description: "Customize your application appearance and typography",
-  colorScheme: "Color Scheme",
-  typography: "Typography"
-};
+import { useTranslation } from '@/hooks/use-translation';
 
 type ThemeColors = {
   background: string;
@@ -161,6 +154,7 @@ function generateThemeCss(theme: ThemePreset) {
 
 export default function ThemePage() {
   const { toast } = useToast();
+  const { dict } = useTranslation();
   const [selectedTheme, setSelectedTheme] = useState(themePresets[0].name);
   const [selectedFont, setSelectedFont] = useState(fontPresets[0].name);
 
@@ -177,8 +171,8 @@ export default function ThemePage() {
 
     setSelectedTheme(theme.name);
     toast({
-      title: `${theme.name} Theme Applied!`,
-      description: 'Your new color scheme has been activated.',
+      title: (dict?.settings?.theme?.themeApplied || "{name} Theme Applied!").replace("{name}", theme.name),
+      description: dict?.settings?.theme?.themeAppliedDescription || 'Your new color scheme has been activated.',
     });
   };
 
@@ -187,22 +181,22 @@ export default function ThemePage() {
     document.body.style.fontFamily = font.variable;
     setSelectedFont(font.name);
     toast({
-      title: `${font.name} Font Applied!`,
-      description: 'The application font has been updated.',
+      title: (dict?.settings?.theme?.fontApplied || "{name} Font Applied!").replace("{name}", font.name),
+      description: dict?.settings?.theme?.fontAppliedDescription || 'The application font has been updated.',
     });
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{translations.title}</CardTitle>
+        <CardTitle>{dict?.settings?.theme?.title || "Customize Theme"}</CardTitle>
         <CardDescription>
-          {translations.description}
+          {dict?.settings?.theme?.description || "Personalize the look and feel of your application."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-8">
         <div>
-            <h3 className="text-lg font-medium mb-4">{translations.colorScheme}</h3>
+            <h3 className="text-lg font-medium mb-4">{dict?.settings?.theme?.colorScheme || "Color Scheme"}</h3>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {themePresets.map((theme) => (
                 <button key={theme.name} onClick={() => applyTheme(theme)}>
@@ -246,7 +240,7 @@ export default function ThemePage() {
         <Separator />
 
         <div>
-            <h3 className="text-lg font-medium mb-4">{translations.typography}</h3>
+            <h3 className="text-lg font-medium mb-4">{dict?.settings?.theme?.typography || "Typography"}</h3>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {fontPresets.map((font) => (
                     <button key={font.name} onClick={() => applyFont(font)}>
@@ -267,7 +261,7 @@ export default function ThemePage() {
                             </CardHeader>
                             <CardContent>
                                 <p className={cn("text-lg", font.className)}>
-                                    The quick brown fox jumps over the lazy dog.
+                                    {dict?.settings?.theme?.pangram || "The quick brown fox jumps over the lazy dog."}
                                 </p>
                             </CardContent>
                         </Card>

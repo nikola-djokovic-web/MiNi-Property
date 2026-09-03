@@ -37,6 +37,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import AddTenantRequestDialog from "@/components/maintenance/add-tenant-request-dialog";
 import { triageMaintenanceRequest } from "@/ai/flows/triage-maintenance-request";
 import eventBus from "@/lib/events";
+import { useTranslation } from "@/hooks/use-translation";
 
 const TENANT_ID = process.env.NEXT_PUBLIC_DEMO_TENANT_ID ?? "";
 
@@ -78,6 +79,7 @@ function getPriorityClasses(priority: string) {
 
 // Table row component
 const MaintenanceTableRow = ({ request }: { request: any }) => {
+  const { dict } = useTranslation();
   return (
     <AnimatedTableRow>
       <TableCell className="font-medium">{request.issue}</TableCell>
@@ -93,12 +95,24 @@ const MaintenanceTableRow = ({ request }: { request: any }) => {
               : "bg-green-600"
           )}
         >
-          {request.priority}
+          {request.priority === "High"
+            ? (dict?.common?.high || "High")
+            : request.priority === "Medium"
+            ? (dict?.common?.medium || "Medium")
+            : request.priority === "Low"
+            ? (dict?.common?.low || "Low")
+            : request.priority}
         </Badge>
       </TableCell>
       <TableCell>
         <Badge className={getStatusClasses(request.status)}>
-          {request.status}
+          {request.status === "New"
+            ? (dict?.common?.new || "New")
+            : request.status === "In Progress"
+            ? (dict?.common?.inProgress || "In Progress")
+            : request.status === "Completed"
+            ? (dict?.common?.completed || "Completed")
+            : request.status}
         </Badge>
       </TableCell>
       <TableCell className="text-sm text-muted-foreground">
@@ -115,7 +129,7 @@ const MaintenanceTableRow = ({ request }: { request: any }) => {
             <span className="text-sm">{request.assignedWorker.name}</span>
           </div>
         ) : (
-          <span className="text-sm text-muted-foreground">Unassigned</span>
+          <span className="text-sm text-muted-foreground">{dict?.common?.unassigned || "Unassigned"}</span>
         )}
       </TableCell>
       <TableCell>
@@ -132,7 +146,7 @@ const MaintenanceTableRow = ({ request }: { request: any }) => {
               </Link>
             </TooltipTrigger>
             <TooltipContent>
-              <p>View Details</p>
+              <p>{dict?.common?.viewDetails || "View Details"}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -151,6 +165,7 @@ const MaintenanceTable = ({
   showLimit?: boolean;
   onShowAll?: () => void;
 }) => {
+  const { dict } = useTranslation();
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(() => {
     // Load persisted choice from localStorage
@@ -177,7 +192,7 @@ const MaintenanceTable = ({
         {requests.length > 5 && (
           <div className="flex justify-end">
             <Button variant="outline" onClick={onShowAll}>
-              Show All ({requests.length})
+              {(dict?.maintenance?.showAll || "Show All ({count})").replace("{count}", String(requests.length))}
             </Button>
           </div>
         )}
@@ -185,12 +200,12 @@ const MaintenanceTable = ({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Issue</TableHead>
-                <TableHead>Property</TableHead>
-                <TableHead>Priority</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Submitted</TableHead>
-                <TableHead>Worker</TableHead>
+                <TableHead>{dict?.maintenance?.table?.issue || "Issue"}</TableHead>
+                <TableHead>{dict?.maintenance?.table?.property || "Property"}</TableHead>
+                <TableHead>{dict?.maintenance?.table?.priority || "Priority"}</TableHead>
+                <TableHead>{dict?.maintenance?.table?.status || "Status"}</TableHead>
+                <TableHead>{dict?.maintenance?.table?.submitted || "Submitted"}</TableHead>
+                <TableHead>{dict?.common?.assignedTo || "Worker"}</TableHead>
                 <TableHead></TableHead>
               </TableRow>
             </TableHeader>
@@ -198,7 +213,7 @@ const MaintenanceTable = ({
               {displayRequests.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                    No maintenance requests found.
+                    {dict?.maintenance?.noRequestsFound || "No maintenance requests found."}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -237,7 +252,7 @@ const MaintenanceTable = ({
       {requests.length > 5 && (
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <span className="text-sm text-muted-foreground">Show:</span>
+            <span className="text-sm text-muted-foreground">{dict?.maintenance?.show || dict?.common?.show || "Show:"}</span>
             <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(parseInt(value))}>
               <SelectTrigger className="w-20">
                 <SelectValue />
@@ -248,9 +263,9 @@ const MaintenanceTable = ({
                 <SelectItem value="20">20</SelectItem>
               </SelectContent>
             </Select>
-            <span className="text-sm text-muted-foreground">per page</span>
+            <span className="text-sm text-muted-foreground">{dict?.maintenance?.perPage || dict?.common?.perPage || "per page"}</span>
           </div>
-          
+
           {totalPages > 1 && (
             <div className="flex items-center space-x-2">
               <Button
@@ -259,10 +274,10 @@ const MaintenanceTable = ({
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
               >
-                Previous
+                {dict?.common?.previous || "Previous"}
               </Button>
               <span className="text-sm text-muted-foreground">
-                Page {currentPage} of {totalPages}
+                {(dict?.common?.page || "Page")} {currentPage} {(dict?.common?.of || "of")} {totalPages}
               </span>
               <Button
                 variant="outline"
@@ -270,7 +285,7 @@ const MaintenanceTable = ({
                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
               >
-                Next
+                {dict?.common?.next || "Next"}
               </Button>
             </div>
           )}
@@ -281,12 +296,12 @@ const MaintenanceTable = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Issue</TableHead>
-              <TableHead>Property</TableHead>
-              <TableHead>Priority</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Submitted</TableHead>
-              <TableHead>Worker</TableHead>
+              <TableHead>{dict?.maintenance?.table?.issue || "Issue"}</TableHead>
+              <TableHead>{dict?.maintenance?.table?.property || "Property"}</TableHead>
+              <TableHead>{dict?.maintenance?.table?.priority || "Priority"}</TableHead>
+              <TableHead>{dict?.maintenance?.table?.status || "Status"}</TableHead>
+              <TableHead>{dict?.maintenance?.table?.submitted || "Submitted"}</TableHead>
+              <TableHead>{dict?.common?.assignedTo || "Worker"}</TableHead>
               <TableHead></TableHead>
             </TableRow>
           </TableHeader>
@@ -294,7 +309,7 @@ const MaintenanceTable = ({
             {currentRequests.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                  No maintenance requests found.
+                  {dict?.maintenance?.noRequestsFound || "No maintenance requests found."}
                 </TableCell>
               </TableRow>
             ) : (
@@ -315,10 +330,10 @@ const MaintenanceTable = ({
             onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
             disabled={currentPage === 1}
           >
-            Previous
+            {dict?.common?.previous || "Previous"}
           </Button>
           <span className="text-sm text-muted-foreground">
-            Page {currentPage} of {totalPages} ({requests.length} total)
+            {(dict?.common?.page || "Page")} {currentPage} {(dict?.common?.of || "of")} {totalPages} ({requests.length} total)
           </span>
           <Button
             variant="outline"
@@ -326,7 +341,7 @@ const MaintenanceTable = ({
             onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage === totalPages}
           >
-            Next
+            {dict?.common?.next || "Next"}
           </Button>
         </div>
       )}
@@ -336,6 +351,7 @@ const MaintenanceTable = ({
 
 export default function MaintenancePage() {
   const { user } = useCurrentUser();
+  const { dict } = useTranslation();
   const [maintenanceRequests, setMaintenanceRequests] = useState<any[]>([]);
   const [currentTenantData, setCurrentTenantData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -441,8 +457,8 @@ export default function MaintenancePage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title={effectiveUser.role === 'tenant' ? "My Maintenance Requests" : "Maintenance Requests"}
-        description={effectiveUser.role === 'tenant' ? "Track and manage your maintenance requests." : "Manage all maintenance requests in the system."}
+        title={effectiveUser.role === 'tenant' ? (dict?.maintenance?.myTitle || "My Maintenance Requests") : (dict?.maintenance?.title || "Maintenance Requests")}
+        description={effectiveUser.role === 'tenant' ? (dict?.maintenance?.tenantDescription || "Track and manage your maintenance requests.") : (dict?.maintenance?.adminDescription || "Manage all maintenance requests in the system.")}
       >
         {effectiveUser.role === 'tenant' && (
           <AddTenantRequestDialog properties={[]} onAddRequest={handleAddRequest} />
@@ -450,10 +466,10 @@ export default function MaintenancePage() {
       </PageHeader>
       <Tabs defaultValue="all">
         <TabsList>
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="new">New</TabsTrigger>
-          <TabsTrigger value="in-progress">In Progress</TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
+          <TabsTrigger value="all">{dict?.maintenance?.all || "All"}</TabsTrigger>
+          <TabsTrigger value="new">{dict?.common?.new || "New"}</TabsTrigger>
+          <TabsTrigger value="in-progress">{dict?.common?.inProgress || "In Progress"}</TabsTrigger>
+          <TabsTrigger value="completed">{dict?.common?.completed || "Completed"}</TabsTrigger>
         </TabsList>
         <TabsContent value="all" className="mt-4">
           <MaintenanceTable 
