@@ -6,6 +6,7 @@ import {
   listPropertiesForUser,
   listTenantsForUser,
 } from '@/server/queries';
+import { prisma } from '@/server/db';
 import DashboardPageContent from './dashboard-page-content';
 import {
   ChartConfig,
@@ -53,13 +54,18 @@ export default async function Dashboard({ params }: { params: Promise<{ lang: Lo
 
   // Fetch data directly from the database (no self HTTP round-trip).
   // The (dashboard) layout already redirects unauthenticated users to /login.
-  const [allMaintenanceRequests, properties, tenantsResult] = user
+  const [allMaintenanceRequests, properties, tenantsResult, news] = user
     ? await Promise.all([
         listMaintenanceRequestsForUser(user),
         listPropertiesForUser(user),
         listTenantsForUser(user),
+        prisma.newsPost.findMany({
+          where: { tenantId: user.tenantId },
+          orderBy: { createdAt: 'desc' },
+          take: 50,
+        }),
       ])
-    : [[], [], { data: [] as any[] }];
+    : [[], [], { data: [] as any[] }, []];
 
   const tenants = tenantsResult.data;
 
@@ -120,6 +126,7 @@ export default async function Dashboard({ params }: { params: Promise<{ lang: Lo
         overdueTenantsInit={[]} // Mock empty array for now
         propertiesInit={properties}
         tenantsInit={tenants}
+        newsInit={news}
         rentPaymentsInit={[]} // Mock empty array for now
     />
   );

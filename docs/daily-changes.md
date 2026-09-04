@@ -219,10 +219,20 @@ Boja iz logoa je identifikovana kao `#7C3AED` (ljubičasta) — različita je od
 
 - `npx tsc --noEmit`, `npm run build`, `npx vitest run` (18/18) — bez novih grešaka nakon svih izmena.
 
+## 8. Vesti na kontrolnoj tabli
+
+- Dodat je tenant-scoped model i API za vesti: admini i vlasnici mogu da dodaju, izmene i obrišu objave, dok ih svi korisnici iste firme vide na dashboardu.
+- Vesti podržavaju naslov, sadržaj, datum objave i bezbednu serversku proveru pristupa; dodata je Prisma migracija.
+
 ## 7. Tematske boje
 
 - Dodat je imenovani **MiNi Purple** preset u boji logoa, postavljen kao podrazumevani.
 - Izabrana tema se čuva u `localStorage` i automatski vraća nakon osvežavanja ili ponovnog otvaranja aplikacije; izbor ostalih tema ostaje dostupan.
+
+## 9. Istaknute vesti na dashboardu
+
+- Vesti su vizuelno istaknute kroz posebno obojenu sekciju sa najnovijom objavom kao glavnom vesti.
+- Dodata je paginacija po tri objave, tako da veći broj obaveštenja ne širi dashboard i da starije vesti ostanu dostupne.
 - Headless Chrome (CDP) sa simuliranim pravim klikovima miša: prijava, klik na prekidač jezika, provera da se tabela, zaglavlje, dashboard i dijalog za pretragu stvarno prebacuju na nemački — ne samo statički HTML pri direktnoj poseti, već i posle klijentske navigacije.
 - Snimci ekrana u mobilnoj (390×844) i desktop (1400×900) emulaciji pre/posle redizajna zaglavlja.
 - Ručna izmena work-log unosa testirana preko CDP-a (popunjavanje forme, potvrda u bazi preko GET rute, osvežavanje stranice).
