@@ -19,6 +19,7 @@ import { useTranslation } from "@/hooks/use-translation";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { useToast } from "@/hooks/use-toast";
 
 interface DashboardPageContentProps {
   lang: string;
@@ -46,6 +47,7 @@ export default function DashboardPageContent({
 }: DashboardPageContentProps) {
   const { user } = useCurrentUser();
   const { dict } = useTranslation();
+  const { toast } = useToast();
   const [maintenanceRequests, setMaintenanceRequests] = useState(maintenanceRequestsInit);
   const [properties, setProperties] = useState(propertiesInit);
   const [tenants, setTenants] = useState(tenantsInit);
@@ -175,6 +177,12 @@ export default function DashboardPageContent({
         : [result.data, ...current]);
       setNewsPage(0);
       resetNewsForm();
+    } catch (error) {
+      console.error("Failed to save news post:", error);
+      toast({
+        title: dict?.dashboard?.news?.saveFailed || "Failed to save news post",
+        variant: "destructive",
+      });
     } finally {
       setIsSavingNews(false);
     }
@@ -182,9 +190,16 @@ export default function DashboardPageContent({
 
   const deleteNews = async (id: string) => {
     if (!window.confirm(dict?.dashboard?.news?.deleteConfirm || "Delete this news post?")) return;
-    const response = await fetch(`/api/news/${id}`, { method: "DELETE" });
-    if (response.ok) {
+    try {
+      const response = await fetch(`/api/news/${id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Failed to delete news post");
       setNews((current) => current.filter((post) => post.id !== id));
+    } catch (error) {
+      console.error("Failed to delete news post:", error);
+      toast({
+        title: dict?.dashboard?.news?.deleteFailed || "Failed to delete news post",
+        variant: "destructive",
+      });
     }
   };
 

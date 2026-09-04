@@ -853,6 +853,13 @@ export default function PropertiesPageContent({ lang }: { lang: Locale }) {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       )}
+                      {(user.role === "admin" || user.role === "owner") && (
+                        <Button asChild variant="outline" size="sm">
+                          <Link href={`/${lang}/properties/${property.id}`}>
+                            {dict?.units?.manageUnits || "Manage Units"}
+                          </Link>
+                        </Button>
+                      )}
                     </div>
                   </CardHeader>
 

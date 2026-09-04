@@ -261,6 +261,45 @@ Potvrđeno uživo na `/de/dashboard` — "Neuigkeiten aus dem Gebäude" i "Noch 
 
 ---
 
+## 12. `npm audit` — smanjenje broja ranjivosti
+
+`genkit`, `@genkit-ai/googleai`, `@genkit-ai/next` i `genkit-cli` podignuti sa 1.14.x na najnoviju verziju (1.42.x). Najnovija verzija `@genkit-ai/core` više ne povlači ceo Firebase/Google-Cloud/OpenTelemetry lanac zavisnosti u svojim direktnim zavisnostima kao pre.
+
+- Produkcione ranjivosti: **94 → 81**, kritične **2 → 0**.
+- Ostatak potiče isključivo od `@genkit-ai/firebase` — opcione (optional) zavisnosti `@genkit-ai/core` koju kod aplikacije nikad ne uvozi; nedostupan/mrtav kod sa realnog bezbednosnog stanovišta, ali `npm audit` ga i dalje broji jer postoji u `node_modules`.
+- Probano i odbačeno: `npm install --omit=optional` bi dodatno smanjio broj (94→39 na produkciji), ali taj flag globalno isključuje SVE opcione zavisnosti u projektu — što je slučajno obrisalo i Next.js-ov sopstveni platform-specific SWC kompajler (`@next/swc-darwin-arm64`, i sam opciona zavisnost), što je srušilo `npm run build`. Vraćeno na običan `npm install` (bez omit flag-a) — bezbednije, čist build.
+- Potvrđeno da AI triage flow (`triageMaintenanceRequest`) i dalje radi ispravno sa novim genkit API-jem — testirano uživo preko privremene test-rute (kreirana i obrisana), modul se učitava i izvršava bez greške.
+
+---
+
+## 13. Bag: čuvanje/brisanje vesti nije prijavljivalo grešku korisniku
+
+`saveNews`/`deleteNews` na dashboard-u nisu imali `catch` blok — ako bi API poziv pao (npr. mrežna greška), korisnik ne bi video ništa, dugme bi se prosto vratilo u normalno stanje bez ikakve poruke. Dodat `catch` sa toast porukom na oba mesta (`dict.dashboard.news.saveFailed` / `deleteFailed`).
+
+---
+
+## 14. Units & Leases — nova funkcija za praćenje stanova/apartmana i ugovora o zakupu
+
+Šema je već imala `Unit` i `Lease` modele (svaka nekretnina može imati više stambenih jedinica, svaka jedinica više ugovora o zakupu kroz vreme), ali bez ijedne API rute ili UI ekrana — potpuno neiskorišćeno.
+
+Pre implementacije, korisniku su postavljena tri pitanja o obimu (svi odgovori: preporučena opcija):
+
+1. **Da li zameniti ili dodati** — dodato kao **paralelna, opciona funkcija**. Postojeći tok (stanar direktno vezan za Property preko Tenants ekrana) ostaje potpuno netaknut; Units & Leases je dodatak za property menadžere koji žele da prate više jedinica po zgradi.
+2. **Da li `Lease.resident` treba da bude pravi link ka nalogu stanara (User)** — ostaje **slobodno tekstualno polje**, kao i pre. Razlog (razjašnjeno i korisniku na pitanje "zašto je ovako odrađeno"): ugovor o zakupu često postoji nezavisno od toga da li stanar ikad dobije/prihvati nalog u aplikaciji — zahtevati da stanar već ima nalog pre nego što mu se unese ugovor bilo bi previše restriktivno za stvarnu upotrebu. Trade-off: nema zaštite od greške u kucanju imena niti klika sa ugovora do profila stanara — ako to zatreba, treba dodati (nova migracija + dropdown u UI).
+3. **Gde u UI-ju** — unutar **Property detalja** (`/properties/[id]`), ne kao posebna stavka u glavnom meniju.
+
+Sprovedeno:
+
+- Nova stranica `/properties/[id]` — do sada je bila prazan placeholder ("Property detail page is working!"), i nigde u aplikaciji nije postojao link ka njoj. Sada prikazuje stvarne podatke o nekretnini i (za admin/owner) sekciju "Units & Leases".
+- Puna CRUD API: `GET/POST /api/properties/[id]/units`, `PATCH/DELETE /api/units/[id]`, `POST /api/units/[id]/leases`, `PATCH/DELETE /api/leases/[id]` — svuda ista autorizacija kao ostatak sistema (admin/owner, provera da jedinica/ugovor pripada firmi ulogovanog korisnika).
+- UI: dodavanje/izmena/brisanje jedinica (oznaka, broj spavaćih soba, mesečna kirija), i po jedinici dodavanje/izmena/brisanje ugovora (stanar, datum početka/kraja, kirija) sa "Active" bedžom za tekuće ugovore.
+- Novo dugme "Manage Units" na listi nekretnina, vidljivo samo admin/owner ulogama, pored postojećeg "Change" dugmeta za dodelu radnika.
+- Prevedeno na nemački (`dict.units.*`, `dict.propertyDetail.*`).
+
+Potvrđeno: puni CRUD ciklus testiran preko curl-a (kreiranje/izmena/brisanje jedinice i ugovora), autorizacija potvrđena (radnik dobija 403 na kreiranje), i uživo preko headless Chrome-a (dodavanje jedinice kroz stvarnu formu, screenshot).
+
+---
+
 ## Provera
 
 - `npx tsc --noEmit`, `npm run build`, `npx vitest run` (18/18) — bez novih grešaka nakon svih izmena.
@@ -269,6 +308,8 @@ Potvrđeno uživo na `/de/dashboard` — "Neuigkeiten aus dem Gebäude" i "Noch 
 - Ručna izmena work-log unosa testirana preko CDP-a (popunjavanje forme, potvrda u bazi preko GET rute, osvežavanje stranice).
 - Screenshot login logoa u oba theme-a (svetla/tamna) posle uvećanja i animacije.
 - `/api/news` i `/de/dashboard` provereni preko curl-a nakon popravke Prisma klijenta/migracije.
+- `npm audit --omit=dev` pre/posle genkit upgrade-a; build i AI triage flow provereni nakon.
+- Units & Leases CRUD testiran preko curl-a (sve 4 operacije + autorizacija) i uživo preko headless Chrome-a.
 
 ---
 
