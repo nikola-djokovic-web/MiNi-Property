@@ -10,6 +10,7 @@ import { Upload, X } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
+import ConfirmDeleteDialog from "@/components/confirm-delete-dialog";
 
 export default function CompanySettingsPage() {
   const { user, updateUser } = useCurrentUser();
@@ -252,16 +253,11 @@ export default function CompanySettingsPage() {
                   )}
 
                   {user?.companyLogo && !logoFile && (
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      onClick={handleDeleteLogo}
-                      disabled={isLoading}
-                    >
-                      <X className="w-4 h-4 mr-2" />
-                      {dict?.settings?.company?.deleteCurrent || "Delete Current"}
-                    </Button>
+                    <ConfirmDeleteDialog
+                      itemName={dict?.settings?.company?.companyLogo || "company logo"}
+                      itemType={dict?.settings?.company?.deleteCurrent || "Delete current"}
+                      onConfirm={handleDeleteLogo}
+                    />
                   )}
                 </div>
 

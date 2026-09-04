@@ -172,8 +172,14 @@ export default function WorkersPage() {
     eventBus.emit("worker-updated", updatedWorker);
   };
 
-  const handleDeleteWorker = (workerId: string) => {
-    eventBus.emit("worker-deleted", workerId);
+  const handleDeleteWorker = async (workerId: string) => {
+    try {
+      const response = await apiSend(`/api/workers?id=${workerId}`, "DELETE");
+      eventBus.emit("worker-deleted", workerId);
+    } catch (error) {
+      console.error("Error deleting worker:", error);
+      throw error;
+    }
   };
 
   return (

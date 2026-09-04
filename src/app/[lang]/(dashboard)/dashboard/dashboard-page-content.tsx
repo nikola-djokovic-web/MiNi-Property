@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Eye, Users, Home, TrendingUp, DollarSign, Megaphone, Pencil, Trash2, Plus, BellRing, CalendarDays } from "lucide-react";
+import { Eye, Users, Home, TrendingUp, DollarSign, Megaphone, Pencil, Plus, BellRing, CalendarDays } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { useToast } from "@/hooks/use-toast";
+import ConfirmDeleteDialog from "@/components/confirm-delete-dialog";
 
 interface DashboardPageContentProps {
   lang: string;
@@ -189,7 +190,6 @@ export default function DashboardPageContent({
   };
 
   const deleteNews = async (id: string) => {
-    if (!window.confirm(dict?.dashboard?.news?.deleteConfirm || "Delete this news post?")) return;
     try {
       const response = await fetch(`/api/news/${id}`, { method: "DELETE" });
       if (!response.ok) throw new Error("Failed to delete news post");
@@ -391,7 +391,7 @@ export default function DashboardPageContent({
                           <time className="flex items-center gap-1.5" dateTime={post.createdAt}><CalendarDays className="h-3.5 w-3.5" /> {new Date(post.createdAt).toLocaleDateString(safeLang === "de" ? "de-DE" : "en-US")}</time>
                           {canManageNews && <div className="absolute bottom-0 right-0 flex gap-1">
                             <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" aria-label={dict?.dashboard?.news?.editAriaLabel || "Edit news"} onClick={() => { setEditingNewsId(post.id); setNewsTitle(post.title); setNewsContent(post.content); }}><Pencil className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" aria-label={dict?.dashboard?.news?.deleteAriaLabel || "Delete news"} onClick={() => deleteNews(post.id)}><Trash2 className="h-4 w-4" /></Button>
+                            <ConfirmDeleteDialog itemName={post.title} itemType={dict?.dashboard?.news?.noticeLabel || "news"} onConfirm={() => deleteNews(post.id)} />
                           </div>}
                         </div>
                       </div>

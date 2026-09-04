@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTranslation } from '@/hooks/use-translation';
 
 export default function DeleteDocumentDialog({
@@ -38,19 +38,21 @@ export default function DeleteDocumentDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Trash2 className="h-4 w-4 text-destructive" />
-              <span className="sr-only">{dict?.documents?.deleteDocument || "Delete Document"}</span>
-            </Button>
-          </AlertDialogTrigger>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{dict?.documents?.deleteDocument || "Delete Document"}</p>
-        </TooltipContent>
-      </Tooltip>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Trash2 className="h-4 w-4 text-destructive" />
+                <span className="sr-only">{dict?.documents?.deleteDocument || "Delete Document"}</span>
+              </Button>
+            </AlertDialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{dict?.documents?.deleteDocument || "Delete Document"}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{dict?.common?.confirmDeleteTitle || "Are you sure?"}</AlertDialogTitle>

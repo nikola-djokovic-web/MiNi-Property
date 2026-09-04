@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Property } from '@/lib/data';
 
 export default function DeletePropertyDialog({
@@ -34,19 +34,21 @@ export default function DeletePropertyDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Trash2 className="h-4 w-4 text-destructive" />
-              <span className="sr-only">Delete Property</span>
-            </Button>
-          </AlertDialogTrigger>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>Delete Property</p>
-        </TooltipContent>
-      </Tooltip>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Trash2 className="h-4 w-4 text-destructive" />
+                <span className="sr-only">Delete Property</span>
+              </Button>
+            </AlertDialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Delete Property</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure?</AlertDialogTitle>

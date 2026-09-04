@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
-import { ArrowLeft, Building, PlusCircle, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, Building, PlusCircle, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import ConfirmDeleteDialog from '@/components/confirm-delete-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -258,7 +259,6 @@ function UnitCard({ propertyId, unit, onUnitChanged, onUnitDeleted }: {
   const { toast } = useToast();
 
   const handleDeleteUnit = async () => {
-    if (!window.confirm(dict?.units?.deleteUnitConfirm || 'Delete this unit and all its leases?')) return;
     try {
       const res = await fetch(`/api/units/${unit.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete unit');
@@ -270,7 +270,6 @@ function UnitCard({ propertyId, unit, onUnitChanged, onUnitDeleted }: {
   };
 
   const handleDeleteLease = async (leaseId: string) => {
-    if (!window.confirm(dict?.units?.deleteLeaseConfirm || 'Delete this lease?')) return;
     try {
       const res = await fetch(`/api/leases/${leaseId}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete lease');
@@ -302,10 +301,11 @@ function UnitCard({ propertyId, unit, onUnitChanged, onUnitDeleted }: {
         </div>
         <div className="flex items-center gap-1">
           <UnitDialog propertyId={propertyId} unit={unit} onSaved={onUnitChanged} />
-          <Button variant="ghost" size="icon" onClick={handleDeleteUnit}>
-            <Trash2 className="h-4 w-4" />
-            <span className="sr-only">{dict?.units?.deleteUnit || 'Delete unit'}</span>
-          </Button>
+          <ConfirmDeleteDialog
+            itemName={unit.label}
+            itemType={dict?.units?.deleteUnit || 'unit'}
+            onConfirm={handleDeleteUnit}
+          />
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -333,10 +333,11 @@ function UnitCard({ propertyId, unit, onUnitChanged, onUnitDeleted }: {
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <LeaseDialog unitId={unit.id} lease={lease} onSaved={handleLeaseSaved} />
-                  <Button variant="ghost" size="icon" onClick={() => handleDeleteLease(lease.id)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                    <span className="sr-only">{dict?.units?.deleteLease || 'Delete lease'}</span>
-                  </Button>
+                  <ConfirmDeleteDialog
+                    itemName={lease.resident}
+                    itemType={dict?.units?.deleteLease || 'lease'}
+                    onConfirm={() => handleDeleteLease(lease.id)}
+                  />
                 </div>
               </div>
             ))}

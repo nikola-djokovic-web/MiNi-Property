@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function DeleteUserDialog({
   user,
@@ -28,26 +28,28 @@ export default function DeleteUserDialog({
 }) {
   const [open, setOpen] = useState(false);
 
-  const handleDelete = () => {
-    onDelete();
+  const handleDelete = async () => {
+    await onDelete();
     setOpen(false);
   };
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Trash2 className="h-4 w-4 text-destructive" />
-              <span className="sr-only">Delete {userType}</span>
-            </Button>
-          </AlertDialogTrigger>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>Delete {userType}</p>
-        </TooltipContent>
-      </Tooltip>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Trash2 className="h-4 w-4 text-destructive" />
+                <span className="sr-only">Delete {userType}</span>
+              </Button>
+            </AlertDialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Delete {userType}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
