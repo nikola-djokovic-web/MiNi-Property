@@ -50,8 +50,12 @@ export async function listTenantsForUser(
         email: true,
         name: true,
         profileImage: true,
+        companyName: true,
+        companyLogo: true,
         role: true,
         tenantId: true,
+        propertyId: true,
+        property: { select: { id: true, title: true, name: true, address: true, city: true } },
         createdAt: true,
         updatedAt: true,
         passwordHash: true, // only used to derive `registered` below, never returned
@@ -59,30 +63,9 @@ export async function listTenantsForUser(
     }),
   ]);
 
-  const userIds = users.map((u) => u.id);
-  const userInvites = userIds.length
-    ? await prisma.invite.findMany({
-        where: { tenantId, userId: { in: userIds } },
-        include: {
-          property: { select: { id: true, title: true, name: true } },
-        },
-        orderBy: { createdAt: "desc" },
-      })
-    : [];
-
-  const inviteMap = new Map<string, (typeof userInvites)[number]>();
-  userInvites.forEach((invite) => {
-    if (invite.userId && !inviteMap.has(invite.userId)) {
-      inviteMap.set(invite.userId, invite);
-    }
-  });
-
   const data = users.map(({ passwordHash, ...u }) => {
-    const latestInvite = inviteMap.get(u.id);
     return {
       ...u,
-      propertyId: latestInvite?.propertyId || null,
-      property: latestInvite?.property || null,
       // Whether the tenant has completed registration (set a password) yet -
       // used by the UI to show a "New" vs "Active" status badge.
       registered: passwordHash != null,

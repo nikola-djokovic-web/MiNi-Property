@@ -48,11 +48,11 @@ import { useTranslation } from "@/hooks/use-translation";
 function getStatusClasses(status: string) {
   switch (status) {
     case "Active":
-      return "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border-green-200 dark:border-green-700";
+      return "bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-300 dark:hover:bg-green-800/50 border-green-200 dark:border-green-700";
     case "Moving Out":
-      return "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border-red-200 dark:border-red-700";
+      return "bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-800/50 border-red-200 dark:border-red-700";
     case "New":
-      return "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-700";
+      return "bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:hover:bg-blue-800/50 border-blue-200 dark:border-blue-700";
     default:
       return "bg-muted text-muted-foreground border-border";
   }
@@ -251,39 +251,34 @@ export default function TenantsPage() {
               <TableRow>
                 <TableHead>{dict?.tenants?.table?.name || "Name"}</TableHead>
                 <TableHead className="hidden md:table-cell">{dict?.tenants?.table?.property || "Property"}</TableHead>
-                <TableHead className="hidden lg:table-cell">
-                  {dict?.tenants?.table?.leaseEndDate || "Lease End Date"}
-                </TableHead>
+                <TableHead className="hidden lg:table-cell">Company</TableHead>
                 <TableHead>{dict?.tenants?.table?.status || "Status"}</TableHead>
-                <TableHead className="hidden sm:table-cell">
-                  {dict?.tenants?.table?.monthlyRent || "Monthly Rent"}
-                </TableHead>
                 <TableHead className="text-right">{dict?.tenants?.table?.actions || "Actions"}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="py-8 text-center text-muted-foreground"
-                  >
+                    <TableCell
+                      colSpan={5}
+                      className="py-8 text-center text-muted-foreground"
+                    >
                     {dict?.common?.loading || "Loading tenants…"}
                   </TableCell>
                 </TableRow>
               ) : tenants.length === 0 ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="py-8 text-center text-muted-foreground"
-                  >
+                    <TableCell
+                      colSpan={5}
+                      className="py-8 text-center text-muted-foreground"
+                    >
                     {dict?.tenants?.noTenantsYet || "No tenants yet."}
                   </TableCell>
                 </TableRow>
               ) : (
                 <AnimatePresence mode="popLayout">
                   {tenants.map((tenant) => {
-                    const property = properties.find(
+                    const property = tenant.property ?? properties.find(
                       (p) => p.id === tenant.propertyId
                     );
                     const onboardingTasks =
@@ -291,10 +286,6 @@ export default function TenantsPage() {
                     const completedTasks = onboardingTasks.filter(
                       (t: any) => t.completed
                     ).length;
-                    const onboardingProgress =
-                      onboardingTasks.length > 0
-                        ? (completedTasks / onboardingTasks.length) * 100
-                        : 100;
                     return (
                       <AnimatedTableRow 
                         key={tenant.id} 
@@ -314,21 +305,25 @@ export default function TenantsPage() {
                             </AvatarFallback>
                           </Avatar>
                           <div className="grid gap-0.5">
-                            <span className="font-medium">{tenant.name}</span>
-                            <span className="text-muted-foreground text-sm">
-                              {tenant.email}
-                            </span>
-                            <span className="text-muted-foreground md:hidden">
-                              {property?.title}
+                            <span className="font-medium">{tenant.name || "Unnamed tenant"}</span>
+                            <span className="text-sm text-muted-foreground">
+                              {tenant.email || "No email address"}
                             </span>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {property?.title ?? "—"}
+                      <TableCell className="table-cell min-w-40">
+                        <div className="font-medium">
+                          {property?.title ?? property?.name ?? "No property assigned"}
+                        </div>
+                        {property?.address && (
+                          <div className="text-xs text-muted-foreground">
+                            {property.address}{property.city ? `, ${property.city}` : ""}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
-                        {(tenant as any).leaseEndDate ?? "—"}
+                        {tenant.companyName || "—"}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-2">
@@ -341,33 +336,7 @@ export default function TenantsPage() {
                             {getStatusIcon((tenant as any).registered ? "Active" : "New")}
                             {(tenant as any).registered ? (dict?.common?.active || "Active") : (dict?.common?.new || "New")}
                           </Badge>
-                          {!(tenant as any).registered &&
-                            onboardingProgress < 100 && (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className="w-24">
-                                      <Progress
-                                        value={onboardingProgress}
-                                        className="h-1.5 bg-blue-200 [&>div]:bg-blue-600"
-                                      />
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>
-                                      Onboarding: {completedTasks}/
-                                      {onboardingTasks.length} steps completed
-                                    </p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            )}
                         </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        {(tenant as any).rent
-                          ? `$${Number((tenant as any).rent).toLocaleString()}`
-                          : "—"}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-2">

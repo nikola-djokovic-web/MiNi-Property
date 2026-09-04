@@ -1,403 +1,135 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { notFound, useParams, usePathname } from "next/navigation";
-import {
-  ArrowLeft,
-  User,
-  Home,
-  Calendar,
-  Mail,
-  Phone,
-  DollarSign,
-  Wrench,
-  CheckCircle,
-  Eye,
-} from "lucide-react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useParams, usePathname, useRouter } from "next/navigation";
+import { ArrowLeft, Calendar, CheckCircle2, Home, Mail, Pencil, UserRound } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-// import { useToast } from "@/components/ui/use-toast";
-import { cn } from "@/lib/utils";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import EditTenantDialog from "@/components/tenants/edit-tenant-dialog";
 import SendMessageDialog from "@/components/tenants/send-message-dialog";
 import DeleteUserDialog from "@/components/workers/delete-user-dialog";
-import eventBus from "@/lib/events";
-import { buttonVariants } from "@/components/ui/button";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { useTranslation } from "@/hooks/use-translation";
+import { cn } from "@/lib/utils";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
-function getStatusVariant(status: string) {
-  switch (status) {
-    case "Active":
-      return "default";
-    case "Moving Out":
-      return "destructive";
-    case "New":
-      return "secondary";
-    default:
-      return "outline";
-  }
-}
+const TENANT_ID = process.env.NEXT_PUBLIC_DEMO_TENANT_ID ?? "";
 
-function getStatusClasses(status: string) {
-  switch (status) {
-    case "Active":
-      return "bg-green-100 text-green-800";
-    case "Moving Out":
-      return "bg-red-100 text-red-800";
-    case "New":
-      return "bg-blue-100 text-blue-800";
-    default:
-      return "bg-gray-100 text-gray-800";
-  }
-}
-
-function getStatusIcon(status: string) {
-  switch (status) {
-    case "Active":
-      return <CheckCircle className="mr-1 h-4 w-4" />;
-    case "Moving Out":
-      return <Wrench className="mr-1 h-4 w-4" />;
-    case "New":
-      return <User className="mr-1 h-4 w-4" />;
-    default:
-      return null;
-  }
-}
-
-export default function TenantsPage() {
-  const [tenants, setTenants] = useState<any[]>([]);
+export default function TenantDetailPage() {
+  const { user: currentUser } = useCurrentUser();
+  const { dict } = useTranslation();
+  const params = useParams<{ id: string }>();
+  const pathname = usePathname();
+  const router = useRouter();
+  const lang = pathname.split("/")[1] || "en";
+  const [tenant, setTenant] = useState<any>(null);
   const [properties, setProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const pageSize = 10;
-
-  const pathname = usePathname();
-  const lang = pathname.split("/")[1];
-
-  // const { toast } = useToast();
-  const TENANT_ID = process.env.NEXT_PUBLIC_DEMO_TENANT_ID ?? "";
-
-  async function apiGet<T>(url: string): Promise<T> {
-    const res = await fetch(url, {
-      headers: { "x-tenant-id": TENANT_ID },
-      cache: "no-store",
-    });
-    const text = await res.text();
-    if (!res.ok) throw new Error(text || `(${res.status}) Request failed`);
-    return text ? (JSON.parse(text) as T) : ({} as T);
-  }
-  async function apiSend<T>(
-    url: string,
-    method: "POST" | "PUT" | "DELETE",
-    body?: any
-  ): Promise<T> {
-    const res = await fetch(url, {
-      method,
-      headers: { "content-type": "application/json", "x-tenant-id": TENANT_ID },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    const text = await res.text();
-    if (!res.ok) throw new Error(text || `(${res.status}) Request failed`);
-    return text ? (JSON.parse(text) as T) : ({} as T);
-  }
 
   useEffect(() => {
-    let alive = true;
-    (async () => {
-      setLoading(true);
-      try {
-        const { data, total } = await apiGet<{ data: any[]; total: number }>(
-          `/api/tenants?page=${page}&pageSize=${pageSize}`
-        );
-        if (!alive) return;
-        setTenants(data);
-        setTotal(total);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        if (alive) setLoading(false);
+    let active = true;
+    Promise.all([
+      fetch(`/api/tenants/${params.id}`, { headers: { "x-tenant-id": TENANT_ID }, cache: "no-store" }),
+      fetch("/api/properties?page=1&pageSize=100", { headers: { "x-tenant-id": TENANT_ID }, cache: "no-store" }),
+    ]).then(async ([tenantResponse, propertiesResponse]) => {
+      if (!tenantResponse.ok) throw new Error("Tenant not found");
+      const tenantResult = await tenantResponse.json();
+      const propertiesResult = await propertiesResponse.json();
+      if (active) {
+        setTenant(tenantResult.data);
+        setProperties((propertiesResult.data ?? []).map((property: any) => ({
+          ...property,
+          title: property.title ?? property.name ?? "Untitled",
+        })));
       }
-    })();
+    }).catch((error) => {
+      console.error(error);
+      if (active) setTenant(null);
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
+  }, [params.id]);
 
-    const handleTenantAdded = (newTenant: any) => {
-      setTenants((prev) => {
-        const idx = prev.findIndex((t) => t.id === newTenant.id);
-        if (idx === -1) return [...prev, newTenant];
-        const copy = prev.slice();
-        copy[idx] = { ...prev[idx], ...newTenant };
-        return copy;
-      });
-    };
-    const handleTenantUpdated = (updatedTenant: any) => {
-      setTenants((prev) =>
-        prev.map((t) =>
-          t.id === updatedTenant.id ? { ...t, ...updatedTenant } : t
-        )
-      );
-    };
-    const handleTenantDeleted = (tenantId: string) => {
-      setTenants((prev) => prev.filter((t) => t.id !== tenantId));
-    };
-
-    const unsubAdded = eventBus.subscribe("tenant-added", handleTenantAdded);
-    const unsubUpdated = eventBus.subscribe(
-      "tenant-updated",
-      handleTenantUpdated
-    );
-    const unsubDeleted = eventBus.subscribe(
-      "tenant-deleted",
-      handleTenantDeleted
-    );
-
-    return () => {
-      alive = false;
-      unsubAdded();
-      unsubUpdated();
-      unsubDeleted();
-    };
-  }, [page]);
-
-  const handleAddTenant = async (newTenantData: any) => {
-    try {
-      const { data } = await apiSend<{ data: any }>("/api/tenants", "POST", {
-        name: newTenantData.name ?? "",
-        email: newTenantData.email,
-      });
-      eventBus.emit("tenant-added", data);
-      // toast({
-      //   title: "Tenant invited",
-      //   description: `${data.email} has been invited.`,
-      // });
-    } catch (e: any) {
-      console.error(e);
-      // toast({
-      //   title: "Error",
-      //   description: e?.message || "Failed to invite tenant",
-      //   variant: "destructive",
-      // });
-    }
+  const handleUpdate = (updated: any) => setTenant((current: any) => ({ ...current, ...updated }));
+  const handleDelete = async () => {
+    const response = await fetch(`/api/tenants?id=${params.id}`, {
+      method: "DELETE",
+      headers: { "x-tenant-id": TENANT_ID },
+    });
+    if (response.ok) router.push(`/${lang}/tenants`);
   };
 
-  // Assuming handleUpdateTenant and handleDeleteTenant exist elsewhere or need to be implemented similarly
+  if (loading) return <div className="p-8 text-center text-muted-foreground">{dict?.common?.loading || "Loading..."}</div>;
+  if (!tenant) return <div className="p-8 text-center text-muted-foreground">{dict?.common?.pageNotFound || "Tenant not found."}</div>;
+
+  const canManage = currentUser?.role === "admin" || currentUser?.role === "owner";
+  const property = tenant.property ?? properties.find((item) => item.id === tenant.propertyId);
+  const initials = tenant.name?.split(" ").map((part: string) => part[0]).join("").slice(0, 2) || "T";
 
   return (
     <div className="flex flex-col gap-6">
-      {/* ... other UI elements like header, add tenant button, etc. ... */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Tenants</CardTitle>
-          <CardDescription>List of tenants with pagination</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead className="hidden md:table-cell">Property</TableHead>
-                <TableHead className="hidden lg:table-cell">
-                  Lease End
-                </TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="hidden sm:table-cell">Rent</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="py-8 text-center text-muted-foreground"
-                  >
-                    Loading tenants…
-                  </TableCell>
-                </TableRow>
-              ) : tenants.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="py-8 text-center text-muted-foreground"
-                  >
-                    No tenants yet.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                tenants.map((tenant) => {
-                  const property = properties.find(
-                    (p) => p.id === tenant.propertyId
-                  );
-                  const onboardingTasks =
-                    (tenant as any).onboardingStatus || [];
-                  const completedTasks = onboardingTasks.filter(
-                    (t: any) => t.completed
-                  ).length;
-                  const onboardingProgress =
-                    onboardingTasks.length > 0
-                      ? (completedTasks / onboardingTasks.length) * 100
-                      : 100;
-                  return (
-                    <TableRow key={tenant.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="hidden h-9 w-9 sm:flex">
-                            <AvatarImage
-                              src={`https://i.pravatar.cc/150?u=${tenant.id}`}
-                              alt={tenant.name}
-                            />
-                            <AvatarFallback>
-                              {tenant.name?.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="grid gap-0.5">
-                            <span className="font-medium">{tenant.name}</span>
-                            <span className="text-muted-foreground text-sm">
-                              {tenant.email}
-                            </span>
-                            <span className="text-muted-foreground md:hidden">
-                              {property?.title}
-                            </span>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {property?.title ?? "—"}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        {(tenant as any).leaseEndDate ?? "—"}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-2">
-                          <Badge
-                            className={cn(
-                              "justify-center",
-                              getStatusClasses((tenant as any).status ?? "New")
-                            )}
-                          >
-                            {getStatusIcon((tenant as any).status ?? "New")}
-                            {(tenant as any).status ?? "New"}
-                          </Badge>
-                          {(tenant as any).status === "New" &&
-                            onboardingProgress < 100 && (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className="w-24">
-                                      <Progress
-                                        value={onboardingProgress}
-                                        className="h-1.5 bg-blue-200 [&>div]:bg-blue-600"
-                                      />
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>
-                                      Onboarding: {completedTasks}/
-                                      {onboardingTasks.length} steps completed
-                                    </p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        {(tenant as any).rent
-                          ? `$${Number((tenant as any).rent).toLocaleString()}`
-                          : "—"}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-end gap-2">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Link
-                                  href={`/${lang}/tenants/${tenant.id}`}
-                                  className={cn(
-                                    buttonVariants({
-                                      variant: "ghost",
-                                      size: "icon",
-                                    })
-                                  )}
-                                >
-                                  <Eye className="h-4 w-4" />
-                                  <span className="sr-only">View Details</span>
-                                </Link>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>View Details</p>
-                              </TooltipContent>
-                            </Tooltip>
+      <Link href={`/${lang}/tenants`} className={cn(buttonVariants({ variant: "ghost" }), "w-fit -ml-3")}>
+        <ArrowLeft className="mr-2 h-4 w-4" /> {dict?.common?.backTo || "Back to tenants"}
+      </Link>
 
-                            <EditTenantDialog
-                              tenant={tenant}
-                              properties={properties}
-                              onUpdateTenant={() => {}}
-                            />
-
-                            <SendMessageDialog tenant={tenant} />
-
-                            <DeleteUserDialog
-                              user={tenant}
-                              userType="tenant"
-                              onDelete={() => {}}
-                            />
-                          </TooltipProvider>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-          <div className="flex items-center justify-between px-4 py-3 border-t">
-            <div className="text-sm text-muted-foreground">
-              Page {page} of {Math.max(1, Math.ceil(total / pageSize))}
+      <Card className="overflow-hidden border-primary/20">
+        <div className="h-24 bg-primary/10" />
+        <CardContent className="relative px-5 pb-5 sm:px-8">
+          <div className="-mt-12 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex items-end gap-4">
+              <Avatar className="h-24 w-24 border-4 border-background shadow-md">
+                <AvatarImage src={tenant.profileImage || undefined} alt={tenant.name || "Tenant"} />
+                <AvatarFallback className="text-2xl">{initials}</AvatarFallback>
+              </Avatar>
+              <div className="pb-1">
+                <h1 className="text-2xl font-semibold tracking-tight">{tenant.name || "Unnamed tenant"}</h1>
+                <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><Mail className="h-3.5 w-3.5" /> {tenant.email}</p>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <button
-                className="px-3 py-1 rounded border disabled:opacity-50"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                Previous
-              </button>
-              <button
-                className="px-3 py-1 rounded border disabled:opacity-50"
-                disabled={page >= Math.ceil(total / pageSize)}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </button>
+            <div className="flex gap-2 pb-1">
+              <TooltipProvider>
+                {canManage && <EditTenantDialog tenant={tenant} properties={properties} onUpdateTenant={handleUpdate} />}
+                <SendMessageDialog tenant={tenant} />
+                {canManage && <DeleteUserDialog user={tenant} userType="tenant" onDelete={handleDelete} />}
+              </TooltipProvider>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader><CardTitle>Tenant information</CardTitle><CardDescription>Contact and account details.</CardDescription></CardHeader>
+          <CardContent className="grid gap-5 sm:grid-cols-2">
+            <InfoItem icon={<UserRound />} label="Full name" value={tenant.name || "Not provided"} />
+            <InfoItem icon={<Mail />} label="Email address" value={tenant.email} />
+            <InfoItem icon={<CheckCircle2 />} label="Account status" value={tenant.registered ? "Active" : "Invitation pending"} />
+            <InfoItem icon={<Calendar />} label="Joined" value={new Date(tenant.createdAt).toLocaleDateString()} />
+            <InfoItem icon={<Calendar />} label="Last updated" value={new Date(tenant.updatedAt).toLocaleDateString()} />
+            {tenant.companyName && <InfoItem icon={<Home />} label="Company" value={tenant.companyName} />}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Assigned property</CardTitle><CardDescription>Current building assignment.</CardDescription></CardHeader>
+          <CardContent>
+            {property ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3"><div className="rounded-md bg-primary/10 p-2 text-primary"><Home className="h-5 w-5" /></div><div><p className="font-medium">{property.title || property.name}</p><p className="text-sm text-muted-foreground">{property.address}, {property.city}</p></div></div>
+                <Badge variant="secondary">Assigned</Badge>
+              </div>
+            ) : <p className="text-sm text-muted-foreground">No property assigned.</p>}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
+}
+
+function InfoItem({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return <div className="flex items-start gap-3"><span className="mt-0.5 text-muted-foreground [&>svg]:h-4 [&>svg]:w-4">{icon}</span><div><p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p><p className="mt-1 font-medium break-words">{value}</p></div></div>;
 }

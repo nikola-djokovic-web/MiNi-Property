@@ -233,6 +233,12 @@ Boja iz logoa je identifikovana kao `#7C3AED` (ljubičasta) — različita je od
 
 - Vesti su vizuelno istaknute kroz posebno obojenu sekciju sa najnovijom objavom kao glavnom vesti.
 - Dodata je paginacija po tri objave, tako da veći broj obaveštenja ne širi dashboard i da starije vesti ostanu dostupne.
+
+## 10. Prikaz i upravljanje stanarima
+
+- Lista stanara sada prikazuje stvarno dodeljenu nekretninu iz korisničkog naloga, umesto podatka iz poslednje pozivnice.
+- Admini i vlasnici mogu da izmene sva relevantna profilna polja stanara: ime, email, profilnu sliku, podatke firme i dodeljenu nekretninu.
+- Detaljna stranica stanara zamenjena je preglednim profilnim prikazom sa kontaktom, statusom naloga, datumima, firmom i nekretninom, umesto tabele.
 - Headless Chrome (CDP) sa simuliranim pravim klikovima miša: prijava, klik na prekidač jezika, provera da se tabela, zaglavlje, dashboard i dijalog za pretragu stvarno prebacuju na nemački — ne samo statički HTML pri direktnoj poseti, već i posle klijentske navigacije.
 - Snimci ekrana u mobilnoj (390×844) i desktop (1400×900) emulaciji pre/posle redizajna zaglavlja.
 - Ručna izmena work-log unosa testirana preko CDP-a (popunjavanje forme, potvrda u bazi preko GET rute, osvežavanje stranice).
