@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { notFound, useParams, usePathname } from 'next/navigation';
-import { ArrowLeft, User, Home, Calendar, AlertTriangle, Play, Square, Timer as TimerIcon, Bell, Wrench, CheckCircle, Phone, Send, Pencil, FolderKanban } from 'lucide-react';
+import { ArrowLeft, User, Home, Calendar, AlertTriangle, Play, Square, Timer as TimerIcon, Bell, Wrench, CheckCircle, Phone, Send, Pencil, FolderKanban, Star } from 'lucide-react';
 import Link from 'next/link';
 import { useCurrentUser } from '@/hooks/use-current-user';
 import {
@@ -33,6 +33,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import PageHeader from '@/components/page-header';
 import { useTranslation } from '@/hooks/use-translation';
 import { useToast } from '@/hooks/use-toast';
+import { useChatMessages } from '@/hooks/use-chat-messages';
 
 function getStatusClasses(status: string) {
   switch (status) {
@@ -76,12 +77,9 @@ export default function MaintenanceDetailPage() {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  const [messages, setMessages] = useState([
-    { id: 1, senderId: 'user-admin', text: 'Hey, any updates on the faucet leak?', timestamp: '10:30 AM' },
-    { id: 2, senderId: 'user-worker-1', text: 'Just got to the property. I\'m taking a look now.', timestamp: '10:32 AM' },
-    { id: 3, senderId: 'user-admin', text: 'Great, let me know what you find.', timestamp: '10:33 AM' },
-  ]);
+  const messages = useChatMessages((state) => state.messagesByRequestId[requestId] || []);
   const [newMessage, setNewMessage] = useState("");
+  const [sendingMessage, setSendingMessage] = useState(false);
   const chatViewportRef = useRef<HTMLDivElement>(null);
 
   const [isEditing, setIsEditing] = useState(false);
@@ -98,6 +96,10 @@ export default function MaintenanceDetailPage() {
   const [editHours, setEditHours] = useState('');
   const [editMinutes, setEditMinutes] = useState('');
   const [savingLog, setSavingLog] = useState(false);
+  const [confirmRating, setConfirmRating] = useState(0);
+  const [confirmComment, setConfirmComment] = useState('');
+  const [confirmingWork, setConfirmingWork] = useState(false);
+  const [reopeningWork, setReopeningWork] = useState(false);
   const [timerStartTime, setTimerStartTime] = useState<number | null>(null);
   const [totalTimeSpent, setTotalTimeSpent] = useState(0);
 
@@ -145,6 +147,27 @@ export default function MaintenanceDetailPage() {
 
     if (user?.tenantId && requestId) {
       fetchWorkLogs();
+    }
+  }, [requestId, user?.tenantId]);
+
+  // Fetch existing chat history for this request
+  useEffect(() => {
+    const fetchChat = async () => {
+      try {
+        const response = await fetch(`/api/maintenance-requests/${requestId}/chat`, {
+          headers: { 'x-tenant-id': user?.tenantId || 'default-tenant' },
+        });
+        if (response.ok) {
+          const result = await response.json();
+          useChatMessages.getState().setMessages(requestId, result.data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching chat messages:', error);
+      }
+    };
+
+    if (user?.tenantId && requestId) {
+      fetchChat();
     }
   }, [requestId, user?.tenantId]);
 
@@ -441,6 +464,45 @@ export default function MaintenanceDetailPage() {
     }
   };
 
+  const handleConfirmWorkDone = async () => {
+    if (!confirmRating) return;
+    setConfirmingWork(true);
+    try {
+      await updateRequest({
+        tenantConfirmed: true,
+        rating: confirmRating,
+        ratingComment: confirmComment.trim() || undefined,
+      });
+      toast({ title: dict?.maintenance?.confirmSaved || 'Thanks for your feedback!' });
+    } catch (error) {
+      console.error('Failed to confirm work:', error);
+      toast({
+        title: dict?.maintenance?.confirmFailed || 'Failed to save your confirmation',
+        variant: 'destructive',
+      });
+    } finally {
+      setConfirmingWork(false);
+    }
+  };
+
+  const handleReopenRequest = async () => {
+    setReopeningWork(true);
+    try {
+      await updateRequest({ status: 'In Progress' });
+      setConfirmRating(0);
+      setConfirmComment('');
+      toast({ title: dict?.maintenance?.reopened || 'Request reopened' });
+    } catch (error) {
+      console.error('Failed to reopen request:', error);
+      toast({
+        title: dict?.maintenance?.reopenFailed || 'Failed to reopen the request',
+        variant: 'destructive',
+      });
+    } finally {
+      setReopeningWork(false);
+    }
+  };
+
   const formatLoggedDuration = (totalSeconds: number) => {
     const hours = Math.floor((totalSeconds || 0) / 3600);
     const minutes = Math.floor(((totalSeconds || 0) % 3600) / 60);
@@ -520,17 +582,32 @@ export default function MaintenanceDetailPage() {
     }
   };
 
-  const handleSendMessage = () => {
-    if (newMessage.trim() === "" || !user) return;
-    const msg = {
-      id: messages.length + 1,
-      senderId: user.id,
-      text: newMessage.trim(),
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-    setMessages([...messages, msg]);
+  const handleSendMessage = async () => {
+    const text = newMessage.trim();
+    if (text === "" || !user || sendingMessage) return;
     setNewMessage("");
-    
+    setSendingMessage(true);
+    try {
+      const response = await fetch(`/api/maintenance-requests/${requestId}/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-tenant-id': user.tenantId || 'default-tenant',
+        },
+        body: JSON.stringify({ text }),
+      });
+      if (!response.ok) throw new Error('Failed to send message');
+      const result = await response.json();
+      // The SSE broadcast also delivers this back to us; the store dedupes by id.
+      useChatMessages.getState().appendMessage(result.data);
+    } catch (error) {
+      console.error('Failed to send chat message:', error);
+      toast({ title: dict?.maintenance?.chatSendFailed || 'Failed to send message', variant: 'destructive' });
+      setNewMessage(text);
+    } finally {
+      setSendingMessage(false);
+    }
+
     // Force scroll to bottom after a short delay to ensure message is rendered
     setTimeout(() => {
       if (chatViewportRef.current) {
@@ -618,8 +695,13 @@ export default function MaintenanceDetailPage() {
   const canManageUnassigned = !request.assignedWorkerId && isAdmin;
   const canChangeAssignment = isAdmin; // Only admins can reassign requests
   const showTimerAndStatus = !!request.assignedWorkerId && canTakeAction;
-  const showChat = isAdmin || isWorker;
+  const showChat = isAdmin || isWorker || (isTenant && request.submittedByUserId === user?.id);
   const canTenantEdit = isTenant && !request.assignedWorkerId;
+  const awaitingTenantConfirmation =
+    isTenant &&
+    request.status === 'Completed' &&
+    !request.tenantConfirmed &&
+    request.submittedByUserId === user?.id;
 
   return (
     <div className="min-h-screen p-6">
@@ -751,6 +833,78 @@ export default function MaintenanceDetailPage() {
             </div>
             </CardContent>
           </Card>
+
+          {/* Tenant confirmation - only for the tenant who submitted this request, once it's marked Completed */}
+          {awaitingTenantConfirmation && (
+            <Card className="border-primary/40">
+              <CardContent className="p-6 space-y-4">
+                <div>
+                  <h2 className="text-xl font-bold mb-1">{dict?.maintenance?.confirmTitle || "Was the work done?"}</h2>
+                  <p className="text-muted-foreground text-sm">{dict?.maintenance?.confirmDescription || "This request was marked as completed. Please confirm the work was actually done, or reopen it if it wasn't."}</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setConfirmRating(n)}
+                      aria-label={`${n} star`}
+                      className="p-0.5"
+                    >
+                      <Star
+                        className={cn(
+                          'h-6 w-6',
+                          n <= confirmRating ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'
+                        )}
+                      />
+                    </button>
+                  ))}
+                </div>
+                <Textarea
+                  value={confirmComment}
+                  onChange={(e) => setConfirmComment(e.target.value)}
+                  placeholder={dict?.maintenance?.confirmCommentPlaceholder || "Optional comment about the work..."}
+                  rows={3}
+                  className="resize-none"
+                />
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    onClick={handleConfirmWorkDone}
+                    disabled={!confirmRating || confirmingWork || reopeningWork}
+                  >
+                    {confirmingWork ? (dict?.common?.saving || 'Saving...') : (dict?.maintenance?.confirmDone || 'Confirm - Job Done')}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleReopenRequest}
+                    disabled={confirmingWork || reopeningWork}
+                  >
+                    {reopeningWork ? (dict?.common?.saving || 'Saving...') : (dict?.maintenance?.confirmNotDone || "Not Done - Reopen")}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Already confirmed - show the tenant's rating for context */}
+          {isTenant && request.status === 'Completed' && request.tenantConfirmed && request.rating && (
+            <Card>
+              <CardContent className="p-6">
+                <p className="text-sm text-muted-foreground mb-2">{dict?.maintenance?.yourRating || "Your rating"}</p>
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <Star
+                      key={n}
+                      className={cn('h-5 w-5', n <= request.rating ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground')}
+                    />
+                  ))}
+                </div>
+                {request.ratingComment && (
+                  <p className="text-sm text-muted-foreground mt-2">{request.ratingComment}</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Work Logs Section */}
           {(showTimerAndStatus || isAdmin) && (
@@ -1036,6 +1190,11 @@ export default function MaintenanceDetailPage() {
                  request.status === 'In Progress' ? (dict?.common?.inProgress || 'In Progress') :
                  (dict?.common?.completed || 'Completed')}
               </Badge>
+              {(isAdmin || isWorker) && request.status === 'Completed' && !request.tenantConfirmed && request.submittedByUserId && (
+                <Badge variant="outline" className="border-amber-500 text-amber-600">
+                  {dict?.maintenance?.awaitingConfirmation || "Awaiting tenant confirmation"}
+                </Badge>
+              )}
             </div>
             </CardContent>
           </Card>
@@ -1055,16 +1214,17 @@ export default function MaintenanceDetailPage() {
                           <div key={msg.id} className={cn("flex items-end gap-2", isMe && "justify-end")}>
                             {!isMe && (
                               <Avatar className="h-6 w-6">
-                                <AvatarFallback className="text-xs">{msg.senderId.charAt(0).toUpperCase()}</AvatarFallback>
+                                <AvatarFallback className="text-xs">{msg.senderName?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
                               </Avatar>
                             )}
                             <div className={cn(
                               "max-w-[75%] rounded-lg p-2 text-xs",
                               isMe ? "bg-primary text-primary-foreground" : "bg-muted"
                             )}>
+                              {!isMe && <p className="font-semibold mb-0.5">{msg.senderName}</p>}
                               <p>{msg.text}</p>
                               <p className="text-xs mt-1 opacity-70">
-                                {msg.timestamp}
+                                {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </p>
                             </div>
                             {isMe && (
@@ -1076,18 +1236,12 @@ export default function MaintenanceDetailPage() {
                         );
                       })
                     ) : (
-                      <div className="bg-primary text-primary-foreground rounded-lg p-3 text-sm">
-                        <p>faucet leak?</p>
-                        <div className="flex items-center justify-between mt-2">
-                          <span className="text-xs opacity-70">10:30 AM</span>
-                          <Avatar className="h-5 w-5">
-                            <AvatarFallback className="text-xs bg-orange-500 text-white">A</AvatarFallback>
-                        </Avatar>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
+                      <p className="text-center text-sm text-muted-foreground py-6">
+                        {dict?.maintenance?.noMessagesYet || "No messages yet."}
+                      </p>
+                    )}
+                  </div>
+                </ScrollArea>
               
               <div className="flex w-full items-center gap-2">
                 <Textarea
@@ -1103,9 +1257,9 @@ export default function MaintenanceDetailPage() {
                 rows={1}
                 className="min-h-[36px] resize-none"
               />
-              <Button 
-                onClick={handleSendMessage} 
-                disabled={!newMessage.trim()}
+              <Button
+                onClick={handleSendMessage}
+                disabled={!newMessage.trim() || sendingMessage}
                 size="sm"
               >
                 <Send className="h-3 w-3" />

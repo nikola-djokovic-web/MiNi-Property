@@ -60,7 +60,8 @@ export async function POST(req: NextRequest) {
         dateSubmitted: new Date(),
         priority: body.priority || "Medium",
         status: body.status || "New",
-        assignedWorkerId: body.assignedWorkerId || null
+        assignedWorkerId: body.assignedWorkerId || null,
+        submittedByUserId: user.role === "tenant" ? user.id : null,
       },
       include: {
         property: {

@@ -4,7 +4,7 @@ import { prisma } from "@/server/db";
 import { getSessionUser } from "@/lib/auth";
 
 const createLeaseSchema = z.object({
-  resident: z.string().trim().min(1).max(200),
+  residentUserId: z.string().trim().min(1),
   startDate: z.string().trim().min(1),
   endDate: z.string().trim().min(1).nullable().optional(),
   monthlyRent: z.number().min(0).max(1_000_000),
@@ -27,6 +27,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
     }
 
+    const residentUser = await prisma.user.findFirst({
+      where: { id: parsed.data.residentUserId, tenantId: user.tenantId, role: "tenant" },
+      select: { id: true, name: true, email: true },
+    });
+    if (!residentUser) {
+      return NextResponse.json({ error: "Resident not found" }, { status: 400 });
+    }
+
     const startDate = new Date(parsed.data.startDate);
     const endDate = parsed.data.endDate ? new Date(parsed.data.endDate) : null;
     if (Number.isNaN(startDate.getTime()) || (endDate && Number.isNaN(endDate.getTime()))) {
@@ -37,7 +45,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       data: {
         tenantId: user.tenantId,
         unitId,
-        resident: parsed.data.resident,
+        residentUserId: residentUser.id,
+        resident: residentUser.name || residentUser.email,
         startDate,
         endDate,
         monthlyRent: parsed.data.monthlyRent,

@@ -58,6 +58,9 @@ model User {
   notifications Notification[]
   workLogs  WorkLog[]
   documents Document[]
+  leasesAsResident Lease[] @relation("LeaseResident")
+  maintenanceRequestsSubmitted MaintenanceRequest[] @relation("MaintenanceRequestSubmittedBy")
+  chatMessages ChatMessage[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -139,9 +142,15 @@ model MaintenanceRequest {
   priority         String
   status           String // New | In Progress | Completed
   assignedWorkerId String?
+  submittedByUserId String?
+  submittedBy       User?   @relation("MaintenanceRequestSubmittedBy", fields: [submittedByUserId], references: [id], onDelete: SetNull)
+  tenantConfirmed  Boolean  @default(false)
+  rating           Int?
+  ratingComment    String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   workLogs         WorkLog[]
+  chatMessages     ChatMessage[]
 
   @@index([tenantId])
   @@index([tenantId, assignedWorkerId])
@@ -158,6 +167,18 @@ model WorkLog {
   createdAt            DateTime            @default(now())
 
   @@index([maintenanceRequestId])
+}
+
+model ChatMessage {
+  id                   String              @id @default(cuid())
+  maintenanceRequestId String
+  maintenanceRequest   MaintenanceRequest  @relation(fields: [maintenanceRequestId], references: [id], onDelete: Cascade)
+  senderId             String
+  sender               User                @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  text                 String
+  createdAt            DateTime            @default(now())
+
+  @@index([maintenanceRequestId, createdAt])
 }
 
 model Unit {
@@ -182,7 +203,9 @@ model Lease {
   tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   unitId      String
   unit        Unit      @relation(fields: [unitId], references: [id], onDelete: Cascade)
-  resident    String // can be split to Resident model later
+  resident    String // display-name snapshot, kept in sync with residentUser when set
+  residentUserId String?
+  residentUser   User?  @relation("LeaseResident", fields: [residentUserId], references: [id], onDelete: SetNull)
   startDate   DateTime
   endDate     DateTime?
   monthlyRent Decimal   @db.Decimal(10, 2)

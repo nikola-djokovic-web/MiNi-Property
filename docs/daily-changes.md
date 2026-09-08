@@ -317,3 +317,74 @@ Potvrđeno: puni CRUD ciklus testiran preko curl-a (kreiranje/izmena/brisanje je
 
 - Notifikacije koje se generišu unutar detaljne stranice zahteva za održavanje (npr. "Zahtev dodeljen", "Rad započet") sada koriste rečnik, ali same notifikacije koje su ranije kreirane u bazi (pre ove sesije) ostaju na jeziku na kom su originalno sačuvane — tekst notifikacije se ne prevodi retroaktivno.
 
+---
+
+# Sesija: 8. septembar 2026.
+
+**Datum:** 8. septembar 2026. **Vreme:** 12:04 (CEST)
+
+Korisnik je poslao snimak ekrana project-management alata sa 5 stavki u "TO DO" koloni i tražio da se sve isplaniraju i odrade. Sprovedeno istraživanje kroz 3 paralelna Explore agenta (tok zatvaranja tiketa/email/ocena, globalni chat, tenant stranica + dashboard statistika), dva pitanja razjašnjena sa korisnikom (potvrda posla preko dugmeta na tiketu, ne magic-link; "globalni chat" ispao da znači "učiniti postojeći chat po tiketu pravim", ne novi kanal), pa sve pet taskova odrađeno redom.
+
+---
+
+## 1. Samo admin vidi statistiku svih zgrada
+
+4 kartice na dashboard-u (Total Properties, Total Tenants, Occupancy Rate, Monthly Rent) nisu imale nikakvu proveru uloge — vidljive su bile radnicima i stanarima. Sada su ograničene na `effectiveUser?.role === "admin"`, isto kao grafici i "Overdue Payments" koji su već bili ograničeni.
+
+---
+
+## 2. Single tenant stranica
+
+Provereno: `tenants/[id]/page.tsx` već postoji, već je dostupna (link iz liste stanara i pretrage), i već NE koristi tabelu — kartice sa profilom i kontakt info, po uzoru na worker stranicu. Zaključeno da je ovaj task verovatno već rešen u ranijoj sesiji; nije menjan kod.
+
+---
+
+## 3. Units & Leases — stanar iz baze umesto slobodnog teksta
+
+Na zahtev korisnika sa project board-a, `Lease.resident` sada bira postojećeg stanara sa dropdown liste umesto slobodnog kucanja teksta (ranija odluka o slobodnom tekstu iz prethodne sesije je time nadjačana eksplicitnim zahtevom).
+
+- Nova Prisma migracija: `Lease.residentUserId` (nullable FK ka `User`), `resident` ostaje kao snapshot imena (popunjava se automatski sa servera).
+- Nova ruta `GET /api/properties/[id]/tenants` — vraća stanare dodeljene toj nekretnini (preko postojećeg `User.propertyId`), izvor za dropdown.
+- `POST /api/units/[id]/leases` i `PATCH /api/leases/[id]` sada primaju `residentUserId` umesto `resident` teksta; server proverava da stanar zaista postoji i pripada istoj firmi pre upisa.
+- UI (`properties/[id]/page.tsx`, `LeaseDialog`): tekstualno polje zamenjeno `Select` dropdown-om; ako nekretnina nema dodeljenih stanara, prikazuje se odgovarajuća poruka.
+
+Potvrđeno uživo preko curl-a: dodela stanara nekretnini → dropdown ga prikazuje → kreiranje ugovora ispravno popunjava i `residentUserId` i snapshot imena.
+
+---
+
+## 4. Zatvaranje tiketa → email stanaru → potvrda i ocena → reotvaranje ako nije urađeno
+
+Najveći nalaz pre implementacije: `MaintenanceRequest` uopšte nije beležio koji je stanar (User) prijavio zahtev — samo firmu (`tenantId`) i nekretninu. Ovo je moralo prvo da se reši, inače se ne bi znalo kome poslati email niti ko sme da potvrdi.
+
+- Nova Prisma migracija na `MaintenanceRequest`: `submittedByUserId` (ko je prijavio, popunjava se pri kreiranju kad je uloga `tenant`), `tenantConfirmed` (boolean), `rating` (1-5), `ratingComment`.
+- `POST /api/maintenance-requests` sada beleži `submittedByUserId`.
+- `PATCH /api/maintenance-requests/[id]` dobio novu granu autorizacije za stanare — razdvojeno od postojeće funkcije (izmena neaktivnog zahteva ostaje netaknuta, bez identitetske provere, da se ne pokvari za stare zahteve bez `submittedByUserId`), dok su nova potvrda/reotvaranje strogo vezani za `submittedByUserId === user.id` i samo kad je status "Completed" i još nepotvrđen (409 ako se pokuša dva puta).
+- Kad status pređe u "Completed": nova `sendWorkCompletedEmail` funkcija u `src/lib/email.ts` (isti Resend/SMTP fallback obrazac kao ostale email funkcije) šalje email stanaru, plus perzistovana + uživo (SSE) notifikacija — po uzoru na postojeći obrazac za dodelu radnika.
+- UI (`maintenance/[id]/page.tsx`): nova kartica "Was the work done?" sa 5 zvezdica i opcionim komentarom, vidljiva samo stanaru koji je prijavio taj tačno taj zahtev, samo dok čeka potvrdu. "Confirm - Job Done" trajno zatvara (čuva ocenu); "Not Done - Reopen" vraća status na "In Progress". Admin/radnik vide bedž "Awaiting tenant confirmation" dok stanar ne odluči. Posle potvrde, stanar vidi svoju ocenu na istom mestu.
+
+Potvrđeno uživo preko curl-a (kompletan tok: kreiranje → zatvaranje → potvrda sa ocenom → pokušaj ponovne potvrde vraća 409 → drugi zahtev: zatvaranje → odbijanje → status se vraća na "In Progress") i preko headless Chrome-a (klik na zvezdicu, klik "Confirm", potvrđen toast i promena prikaza).
+
+---
+
+## 5. Pravi (sačuvan + uživo) chat po tiketu
+
+Chat na stranici zahteva je do sada bio potpuno lažan — 3 hardkodovane poruke pri učitavanju, slanje je samo dodavalo u lokalni state, ništa se nije čuvalo niti slalo. Vidljiv je bio samo adminu/radniku, stanar ga uopšte nije video.
+
+- Nov Prisma model `ChatMessage` (vezan za `MaintenanceRequest` i pošiljaoca).
+- Nova ruta `GET/POST /api/maintenance-requests/[id]/chat` — autorizacija ista kao za pregled samog zahteva (admin/owner, dodeljeni radnik, ili stanar koji je zahtev prijavio).
+- Real-time isporuka preko **postojećeg** SSE mehanizma (`src/app/api/notifications/stream/route.ts`) — dodata nova `broadcastChatMessage` funkcija koja emituje `type: 'chat_message'` event svim konekcijama iste firme; klijent filtrira po ID-ju zahteva.
+- Nov Zustand store `src/hooks/use-chat-messages.ts` (isti obrazac kao postojeći `use-notifications.ts`) — čuva poruke po zahtevu, dedupe po ID-ju (sprečava duplikat kad se sopstvena poslata poruka vrati nazad kroz SSE).
+- `useRealTimeNotifications` hook proširen da hvata `chat_message` evente i upisuje ih u novi store — koristi se JEDNA, već postojeća SSE konekcija (izbegnuto otvaranje druge konekcije koja bi po postojećoj logici istisnula prvu i pokvarila zvono za notifikacije).
+- `maintenance/[id]/page.tsx`: lokalni lažni `messages` state zamenjen fetch-om istorije + pretplatom na store; `showChat` proširen da uključi stanara (samo za njegov sopstveni zahtev).
+
+Potvrđeno uživo: dva odvojena browser taba (admin i stanar) preko headless Chrome-a — poruka poslata iz jednog taba se pojavljuje u drugom u realnom vremenu, bez osvežavanja stranice.
+
+---
+
+## Provera (sesija od 8. septembra)
+
+- `npx tsc --noEmit`, `npm run build`, `npx vitest run` (18/18) posle svake celine.
+- Ručne Prisma migracije (`migration.sql` + `migrate deploy` + `generate`) za sve tri šematske izmene (Lease.residentUserId; MaintenanceRequest submittedByUserId/tenantConfirmed/rating/ratingComment; ChatMessage model).
+- curl testovi za autorizaciju svake nove/izmenjene rute (stanar/radnik/admin granice, uključujući 409 na duplu potvrdu i 404 na chat pristup bez prava).
+- Headless Chrome (CDP) za sve UI izmene, uključujući test sa dva istovremena browser taba za real-time chat.
+

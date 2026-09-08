@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@/server/db';
 import { getSessionUser } from '@/lib/auth';
 import { broadcastNotification } from '../../notifications/stream/route';
+import { sendWorkCompletedEmail } from '@/lib/email';
 
 const updateMaintenanceRequestSchema = z.object({
   issue: z.string().min(1).max(500).optional(),
@@ -10,6 +11,9 @@ const updateMaintenanceRequestSchema = z.object({
   priority: z.enum(['Low', 'Medium', 'High']).optional(),
   status: z.enum(['New', 'In Progress', 'Completed']).optional(),
   assignedWorkerId: z.string().min(1).nullable().optional(),
+  tenantConfirmed: z.boolean().optional(),
+  rating: z.number().int().min(1).max(5).optional(),
+  ratingComment: z.string().max(2000).optional(),
 });
 
 export async function GET(
@@ -107,6 +111,9 @@ export async function PATCH(
       priority,
       status,
       assignedWorkerId,
+      tenantConfirmed,
+      rating,
+      ratingComment,
     } = parsed.data;
 
     // Verify the request exists and belongs to the tenant
@@ -134,6 +141,38 @@ export async function PATCH(
       }
     }
 
+    if (user.role === 'tenant') {
+      const isEditingContent = issue !== undefined || details !== undefined || priority !== undefined;
+      const isConfirmingWork = tenantConfirmed !== undefined || rating !== undefined || ratingComment !== undefined || status !== undefined;
+
+      if (assignedWorkerId !== undefined) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+      if (isEditingContent) {
+        // Existing behavior: a tenant may edit their unassigned request's
+        // content. Unchanged from before this feature - not identity-scoped,
+        // since older requests have no submittedByUserId to check against.
+        if (existingRequest.assignedWorkerId) {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+      } else if (isConfirmingWork) {
+        // New: confirm-or-reopen a completed request. This IS identity-scoped
+        // since submittedByUserId is only ever set on requests created after
+        // this feature shipped.
+        if (existingRequest.submittedByUserId !== user.id) {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+        if (existingRequest.status !== 'Completed' || existingRequest.tenantConfirmed) {
+          return NextResponse.json({ error: 'This request is not awaiting confirmation' }, { status: 409 });
+        }
+        if (status !== undefined && status !== 'In Progress') {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+      } else {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+    }
+
     if (assignedWorkerId) {
       const worker = await prisma.user.findFirst({
         where: { id: assignedWorkerId, tenantId, role: 'worker' },
@@ -146,7 +185,10 @@ export async function PATCH(
 
     // Check if worker is being assigned for notifications
     const workerBeingAssigned = assignedWorkerId && assignedWorkerId !== existingRequest.assignedWorkerId;
-    
+    // A tenant reopening a request they rejected as "not actually done".
+    const isReopening = user.role === 'tenant' && status === 'In Progress' && existingRequest.status === 'Completed';
+    const isBeingMarkedCompleted = status === 'Completed' && existingRequest.status !== 'Completed';
+
     // Update the maintenance request
     const updatedRequest = await prisma.maintenanceRequest.update({
       where: {
@@ -158,6 +200,11 @@ export async function PATCH(
         ...(priority && { priority }),
         ...(status && { status }),
         ...(assignedWorkerId !== undefined && { assignedWorkerId }),
+        ...(tenantConfirmed !== undefined && { tenantConfirmed }),
+        ...(rating !== undefined && { rating }),
+        ...(ratingComment !== undefined && { ratingComment }),
+        // Reopening clears any stale confirmation state from a prior completion.
+        ...(isReopening && { tenantConfirmed: false, rating: null, ratingComment: null }),
         updatedAt: new Date(),
       },
       include: {
@@ -247,6 +294,71 @@ export async function PATCH(
         console.log('✅ Worker notification sent successfully');
       } catch (notificationError) {
         console.error('❌ Error sending worker assignment notification:', notificationError);
+      }
+    }
+
+    // Notify the tenant who submitted the request that it's ready for their confirmation.
+    if (isBeingMarkedCompleted && updatedRequest.submittedByUserId) {
+      try {
+        const submitter = await prisma.user.findUnique({
+          where: { id: updatedRequest.submittedByUserId },
+          select: { id: true, name: true, email: true },
+        });
+
+        if (submitter) {
+          const notification = {
+            id: `maintenance-completed-${Date.now()}`,
+            title: 'Your maintenance request was completed',
+            description: `"${updatedRequest.issue}" has been marked as completed. Please confirm the work was done.`,
+            icon: 'CheckCircle',
+            type: 'success',
+            priority: 'normal',
+            targetRole: 'tenant',
+            targetUserId: submitter.id,
+            navigationUrl: `/maintenance/${updatedRequest.id}`,
+            actionLabel: 'Review and Confirm',
+            actionUrl: `/maintenance/${updatedRequest.id}`,
+            relatedType: 'maintenance_request',
+            relatedId: updatedRequest.id,
+          };
+
+          try {
+            await prisma.notification.create({
+              data: {
+                title: notification.title,
+                description: notification.description,
+                icon: notification.icon,
+                type: notification.type,
+                priority: notification.priority,
+                navigationUrl: notification.navigationUrl,
+                actionLabel: notification.actionLabel,
+                actionUrl: notification.actionUrl,
+                userId: submitter.id,
+                targetRole: notification.targetRole,
+                relatedType: notification.relatedType,
+                relatedId: notification.relatedId,
+                tenantId: tenantId,
+              },
+            });
+          } catch (dbError) {
+            console.error('Failed to save tenant-confirmation notification:', dbError);
+          }
+
+          broadcastNotification(tenantId, notification, submitter.id, 'tenant');
+
+          if (submitter.email) {
+            await sendWorkCompletedEmail({
+              to: submitter.email,
+              tenantName: submitter.name || submitter.email,
+              issue: updatedRequest.issue,
+              requestId: updatedRequest.id,
+            }).catch((emailError) => {
+              console.error('Failed to send work-completed email:', emailError);
+            });
+          }
+        }
+      } catch (notifyError) {
+        console.error('Error notifying tenant of completed work:', notifyError);
       }
     }
 

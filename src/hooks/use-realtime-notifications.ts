@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useCurrentUser } from './use-current-user';
 import { useNotifications } from './use-notifications';
+import { useChatMessages } from './use-chat-messages';
 
 interface SSEMessage {
-  type: 'connection' | 'heartbeat' | 'notification' | 'system';
+  type: 'connection' | 'heartbeat' | 'notification' | 'system' | 'chat_message';
   subtype?: string;
   message?: string;
   data?: any;
@@ -152,7 +153,13 @@ export function useRealTimeNotifications() {
             case 'heartbeat':
               // Keep connection alive - no action needed
               break;
-              
+
+            case 'chat_message':
+              if (message.data) {
+                useChatMessages.getState().appendMessage(message.data);
+              }
+              break;
+
             case 'notification':
               console.log('🔔 New notification received:', message.data);
               if (message.data) {

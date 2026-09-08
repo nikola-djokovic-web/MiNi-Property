@@ -178,6 +178,31 @@ export function broadcastNotification(tenantId: string, notification: any, targe
   console.log(`📊 Notification broadcast complete. Sent to ${sentCount} connections out of ${connections.size} total.`);
 }
 
+// Function to broadcast a new chat message on a maintenance request to
+// everyone connected in the same org - the client filters by requestId.
+export function broadcastChatMessage(tenantId: string, chatMessage: any) {
+  if (connections.size === 0) return;
+
+  const message = `data: ${JSON.stringify({
+    type: 'chat_message',
+    data: chatMessage,
+    timestamp: new Date().toISOString(),
+  })}\n\n`;
+
+  const encodedMessage = new TextEncoder().encode(message);
+
+  for (const [connectionId, controller] of connections.entries()) {
+    const [connTenantId] = connectionId.split('-');
+    if (connTenantId !== tenantId) continue;
+    try {
+      controller.enqueue(encodedMessage);
+    } catch (error) {
+      console.log('Error broadcasting chat message to connection:', connectionId, error instanceof Error ? error.message : String(error));
+      connections.delete(connectionId);
+    }
+  }
+}
+
 // Function to broadcast system-wide announcements
 export function broadcastSystemAnnouncement(message: string, type: 'info' | 'warning' | 'maintenance' = 'info') {
   const announcement = `data: ${JSON.stringify({

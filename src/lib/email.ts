@@ -221,3 +221,39 @@ export async function sendMessageEmail({
   if (transporter) return sendEmail(to, subject, html);
   throw new Error("No email service configured");
 }
+
+export async function sendWorkCompletedEmail({
+  to,
+  tenantName,
+  issue,
+  requestId,
+}: {
+  to: string;
+  tenantName: string;
+  issue: string;
+  requestId: string;
+}) {
+  const link = `${APP_URL}/en/maintenance/${requestId}`;
+  const subject = `Your maintenance request has been completed`;
+  const html = `
+    <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+      <p>Hi ${tenantName},</p>
+      <p>Your maintenance request "<strong>${issue}</strong>" has been marked as completed by our team.</p>
+      <p>Please take a moment to confirm the work was done, or let us know if it wasn't so we can reopen the request.</p>
+      <p style="margin: 24px 0;">
+        <a href="${link}" style="background: #328378; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none;">Review and confirm</a>
+      </p>
+      <p style="color: #666; font-size: 13px;">MiNi Property</p>
+    </div>
+  `;
+
+  if (resend) {
+    try {
+      return await resend.emails.send({ from: EMAIL_FROM, to, subject, html });
+    } catch (error) {
+      console.error("Resend work-completed email failed:", error);
+    }
+  }
+  if (transporter) return sendEmail(to, subject, html);
+  throw new Error("No email service configured");
+}

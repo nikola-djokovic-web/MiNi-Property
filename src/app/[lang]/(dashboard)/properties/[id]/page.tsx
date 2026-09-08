@@ -12,6 +12,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -28,9 +35,16 @@ import { useToast } from '@/hooks/use-toast';
 type Lease = {
   id: string;
   resident: string;
+  residentUserId: string | null;
   startDate: string;
   endDate: string | null;
   monthlyRent: string | number;
+};
+
+type PropertyTenant = {
+  id: string;
+  name: string | null;
+  email: string;
 };
 
 type Unit = {
@@ -146,10 +160,12 @@ function UnitDialog({
 }
 
 function LeaseDialog({
+  propertyId,
   unitId,
   lease,
   onSaved,
 }: {
+  propertyId: string;
   unitId: string;
   lease?: Lease;
   onSaved: (lease: Lease) => void;
@@ -157,7 +173,9 @@ function LeaseDialog({
   const { dict } = useTranslation();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
-  const [resident, setResident] = useState(lease?.resident || '');
+  const [tenants, setTenants] = useState<PropertyTenant[]>([]);
+  const [loadingTenants, setLoadingTenants] = useState(false);
+  const [residentUserId, setResidentUserId] = useState(lease?.residentUserId || '');
   const [startDate, setStartDate] = useState(lease?.startDate ? lease.startDate.slice(0, 10) : '');
   const [endDate, setEndDate] = useState(lease?.endDate ? lease.endDate.slice(0, 10) : '');
   const [monthlyRent, setMonthlyRent] = useState(String(lease?.monthlyRent ?? ''));
@@ -166,15 +184,22 @@ function LeaseDialog({
 
   useEffect(() => {
     if (open) {
-      setResident(lease?.resident || '');
+      setResidentUserId(lease?.residentUserId || '');
       setStartDate(lease?.startDate ? lease.startDate.slice(0, 10) : '');
       setEndDate(lease?.endDate ? lease.endDate.slice(0, 10) : '');
       setMonthlyRent(String(lease?.monthlyRent ?? ''));
+
+      setLoadingTenants(true);
+      fetch(`/api/properties/${propertyId}/tenants`, { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : { data: [] }))
+        .then((body) => setTenants(body.data || []))
+        .catch(() => setTenants([]))
+        .finally(() => setLoadingTenants(false));
     }
-  }, [open, lease]);
+  }, [open, lease, propertyId]);
 
   const handleSave = async () => {
-    if (!resident.trim() || !startDate || !monthlyRent.trim()) return;
+    if (!residentUserId || !startDate || !monthlyRent.trim()) return;
     setSaving(true);
     try {
       const url = isEditing ? `/api/leases/${lease!.id}` : `/api/units/${unitId}/leases`;
@@ -182,7 +207,7 @@ function LeaseDialog({
         method: isEditing ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          resident: resident.trim(),
+          residentUserId,
           startDate,
           endDate: endDate || null,
           monthlyRent: parseFloat(monthlyRent) || 0,
@@ -222,7 +247,24 @@ function LeaseDialog({
         <div className="grid gap-4 py-2">
           <div className="grid gap-2">
             <Label>{dict?.units?.resident || 'Resident'}</Label>
-            <Input value={resident} onChange={(e) => setResident(e.target.value)} placeholder={dict?.units?.residentPlaceholder || 'Resident name'} />
+            <Select value={residentUserId} onValueChange={setResidentUserId} disabled={loadingTenants}>
+              <SelectTrigger>
+                <SelectValue placeholder={dict?.units?.residentPlaceholder || 'Select a resident'} />
+              </SelectTrigger>
+              <SelectContent>
+                {tenants.length === 0 ? (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                    {dict?.units?.noTenantsForProperty || 'No tenants assigned to this property yet.'}
+                  </div>
+                ) : (
+                  tenants.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name || t.email}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
@@ -240,7 +282,7 @@ function LeaseDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={handleSave} disabled={saving || !resident.trim() || !startDate || !monthlyRent.trim()}>
+          <Button onClick={handleSave} disabled={saving || !residentUserId || !startDate || !monthlyRent.trim()}>
             {saving ? (dict?.common?.saving || 'Saving...') : (dict?.common?.save || 'Save')}
           </Button>
         </DialogFooter>
@@ -311,7 +353,7 @@ function UnitCard({ propertyId, unit, onUnitChanged, onUnitDeleted }: {
       <CardContent className="space-y-3">
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-semibold">{dict?.units?.leases || 'Leases'}</h4>
-          <LeaseDialog unitId={unit.id} onSaved={handleLeaseSaved} />
+          <LeaseDialog propertyId={propertyId} unitId={unit.id} onSaved={handleLeaseSaved} />
         </div>
         {unit.leases.length === 0 ? (
           <p className="text-sm text-muted-foreground">{dict?.units?.noLeasesYet || 'No leases yet.'}</p>
@@ -332,7 +374,7 @@ function UnitCard({ propertyId, unit, onUnitChanged, onUnitDeleted }: {
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
-                  <LeaseDialog unitId={unit.id} lease={lease} onSaved={handleLeaseSaved} />
+                  <LeaseDialog propertyId={propertyId} unitId={unit.id} lease={lease} onSaved={handleLeaseSaved} />
                   <ConfirmDeleteDialog
                     itemName={lease.resident}
                     itemType={dict?.units?.deleteLease || 'lease'}

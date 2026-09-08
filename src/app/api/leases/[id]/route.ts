@@ -4,7 +4,7 @@ import { prisma } from "@/server/db";
 import { getSessionUser } from "@/lib/auth";
 
 const updateLeaseSchema = z.object({
-  resident: z.string().trim().min(1).max(200).optional(),
+  residentUserId: z.string().trim().min(1).optional(),
   startDate: z.string().trim().min(1).optional(),
   endDate: z.string().trim().min(1).nullable().optional(),
   monthlyRent: z.number().min(0).max(1_000_000).optional(),
@@ -32,6 +32,17 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     }
 
     const data: any = { ...parsed.data };
+    if (data.residentUserId) {
+      const residentUser = await prisma.user.findFirst({
+        where: { id: data.residentUserId, tenantId: user.tenantId, role: "tenant" },
+        select: { id: true, name: true, email: true },
+      });
+      if (!residentUser) {
+        return NextResponse.json({ error: "Resident not found" }, { status: 400 });
+      }
+      data.residentUserId = residentUser.id;
+      data.resident = residentUser.name || residentUser.email;
+    }
     if (data.startDate) {
       const d = new Date(data.startDate);
       if (Number.isNaN(d.getTime())) return NextResponse.json({ error: "Invalid start date" }, { status: 400 });

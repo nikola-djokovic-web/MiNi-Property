@@ -408,25 +408,27 @@ export default function DashboardPageContent({
         </div>
       </section>
 
-      {/* Metrics Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
-        {keyMetrics.map((metric) => (
-          <Card key={metric.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {metric.title}
-              </CardTitle>
-              {metric.icon}
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metric.value}</div>
-              {metric.change && (
-                <p className="text-xs text-muted-foreground">{metric.change}</p>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Metrics Cards - admin only: aggregate stats across all buildings */}
+      {effectiveUser?.role === "admin" && (
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+          {keyMetrics.map((metric) => (
+            <Card key={metric.title}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {metric.title}
+                </CardTitle>
+                {metric.icon}
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{metric.value}</div>
+                {metric.change && (
+                  <p className="text-xs text-muted-foreground">{metric.change}</p>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Main Content Grid - Maintenance Requests First */}
       <div className="grid gap-4 md:gap-8 lg:grid-cols-4">
