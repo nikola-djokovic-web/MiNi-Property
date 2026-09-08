@@ -388,3 +388,8 @@ Potvrđeno uživo: dva odvojena browser taba (admin i stanar) preko headless Chr
 - curl testovi za autorizaciju svake nove/izmenjene rute (stanar/radnik/admin granice, uključujući 409 na duplu potvrdu i 404 na chat pristup bez prava).
 - Headless Chrome (CDP) za sve UI izmene, uključujući test sa dva istovremena browser taba za real-time chat.
 
+## 6. Primena Prisma migracija na produkcionu bazu
+
+- Primenjene obe preostale migracije na PostgreSQL bazi preko `npm run db:migrate`: `20260908100000_add_lease_resident_user` i `20260908110000_add_maintenance_confirm_and_chat`.
+- `npx prisma migrate status` potvrđuje da je baza sada potpuno usklađena sa šemom (15/15 migracija primenjeno).
+
