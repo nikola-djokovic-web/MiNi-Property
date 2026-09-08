@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma as db } from '@/server/db';
 import { z } from 'zod';
 import { notificationWebhookService } from '@/lib/webhook-service';
+import { getSessionUser, requireRole } from '@/lib/auth';
 
 const createNotificationSchema = z.object({
   title: z.string().min(1),
@@ -22,17 +23,21 @@ const createNotificationSchema = z.object({
 // GET /api/notifications - Get notifications for current user
 export async function GET(request: NextRequest) {
   try {
+    const sessionUser = await getSessionUser();
+    if (!sessionUser) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    const isAdmin = sessionUser.role === 'admin' || sessionUser.role === 'owner';
+
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    const role = searchParams.get('role');
-    const tenantId = searchParams.get('tenantId');
+    // Non-admins may only read their own notifications - own userId/role,
+    // never another tenant's or another user's.
+    const userId = isAdmin ? searchParams.get('userId') : sessionUser.id;
+    const role = isAdmin ? searchParams.get('role') : sessionUser.role;
+    const tenantId = sessionUser.tenantId;
     const unreadOnly = searchParams.get('unreadOnly') === 'true';
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
-
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
-    }
 
     const where: any = {
       tenantId,
@@ -80,14 +85,11 @@ export async function GET(request: NextRequest) {
 // POST /api/notifications - Create a new notification
 export async function POST(request: NextRequest) {
   try {
+    const { user, error } = await requireRole(['admin', 'owner']);
+    if (error) return error;
+    const tenantId = user.tenantId;
+
     const body = await request.json();
-    const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId');
-
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
-    }
-
     const validatedData = createNotificationSchema.parse(body);
 
     const notification = await db.notification.create({
@@ -125,21 +127,28 @@ export async function POST(request: NextRequest) {
 // PATCH /api/notifications - Bulk update notifications (mark as read)
 export async function PATCH(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId');
-
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+    const sessionUser = await getSessionUser();
+    if (!sessionUser) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
+    const isAdmin = sessionUser.role === 'admin' || sessionUser.role === 'owner';
+    const tenantId = sessionUser.tenantId;
 
-    const { notificationIds, markAsRead, userId, role } = body;
+    const body = await request.json();
+    const { notificationIds, markAsRead } = body;
+    // Non-admins may only mark their own notifications as read.
+    const userId = isAdmin ? body.userId : sessionUser.id;
+    const role = isAdmin ? body.role : sessionUser.role;
 
     if (markAsRead === true) {
       const where: any = { tenantId };
 
       if (notificationIds && Array.isArray(notificationIds)) {
         where.id = { in: notificationIds };
+        if (!isAdmin) {
+          // Scope bulk-by-id updates to the caller's own notifications too.
+          where.OR = [{ userId: sessionUser.id }, { targetRole: sessionUser.role, userId: null }];
+        }
       } else if (userId || role) {
         where.OR = [
           userId ? { userId } : undefined,

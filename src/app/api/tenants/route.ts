@@ -6,6 +6,7 @@ import { listTenantsForUser } from "@/server/queries";
 import crypto from "node:crypto";
 import { sendWorkerInviteEmail } from "@/lib/email";
 import { broadcastNotification } from "../notifications/stream/route";
+import { createFallbackNotification } from "@/lib/notification-fallback-store";
 
 const inviteTenantSchema = z.object({
   name: z.string().trim().min(1).max(200),
@@ -25,6 +26,9 @@ export async function GET(req: NextRequest) {
   try {
     const user = await getSessionUser();
     if (!user) return json({ error: "Authentication required" }, 401);
+    if (user.role !== "admin" && user.role !== "owner") {
+      return json({ error: "Forbidden" }, { status: 403 });
+    }
     const { searchParams } = new URL(req.url);
     const page = Math.max(1, Number(searchParams.get("page") ?? 1));
     const pageSize = Math.min(
@@ -160,44 +164,34 @@ export async function POST(req: NextRequest) {
       // Broadcast to real-time connections for the new tenant
       broadcastNotification(tenantId, welcomeNotification, created.id, 'tenant');
 
-      // Also try to create database notifications
+      // Also persist to the fallback notification store
       try {
-        await Promise.all([
-          fetch(`${req.nextUrl.origin}/api/notifications/fallback?tenantId=${tenantId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              title: adminNotification.title,
-              description: adminNotification.description,
-              icon: adminNotification.icon,
-              type: adminNotification.type,
-              priority: adminNotification.priority,
-              targetRole: adminNotification.targetRole,
-              navigationUrl: adminNotification.navigationUrl,
-              actionLabel: adminNotification.actionLabel,
-              actionUrl: adminNotification.actionUrl,
-              relatedType: adminNotification.relatedType,
-              relatedId: adminNotification.relatedId,
-            }),
-          }),
-          fetch(`${req.nextUrl.origin}/api/notifications/fallback?tenantId=${tenantId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              title: welcomeNotification.title,
-              description: welcomeNotification.description,
-              icon: welcomeNotification.icon,
-              type: welcomeNotification.type,
-              priority: welcomeNotification.priority,
-              targetRole: welcomeNotification.targetRole,
-              navigationUrl: welcomeNotification.navigationUrl,
-              actionLabel: welcomeNotification.actionLabel,
-              actionUrl: welcomeNotification.actionUrl,
-              relatedType: welcomeNotification.relatedType,
-              relatedId: welcomeNotification.relatedId,
-            }),
-          })
-        ]);
+        createFallbackNotification(tenantId, {
+          title: adminNotification.title,
+          description: adminNotification.description,
+          icon: adminNotification.icon,
+          type: adminNotification.type,
+          priority: adminNotification.priority,
+          targetRole: adminNotification.targetRole,
+          navigationUrl: adminNotification.navigationUrl,
+          actionLabel: adminNotification.actionLabel,
+          actionUrl: adminNotification.actionUrl,
+          relatedType: adminNotification.relatedType,
+          relatedId: adminNotification.relatedId,
+        });
+        createFallbackNotification(tenantId, {
+          title: welcomeNotification.title,
+          description: welcomeNotification.description,
+          icon: welcomeNotification.icon,
+          type: welcomeNotification.type,
+          priority: welcomeNotification.priority,
+          targetRole: welcomeNotification.targetRole,
+          navigationUrl: welcomeNotification.navigationUrl,
+          actionLabel: welcomeNotification.actionLabel,
+          actionUrl: welcomeNotification.actionUrl,
+          relatedType: welcomeNotification.relatedType,
+          relatedId: welcomeNotification.relatedId,
+        });
       } catch (notifError) {
         console.log('Fallback notification creation failed:', notifError);
       }

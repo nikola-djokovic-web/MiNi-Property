@@ -47,17 +47,18 @@ export const useNotifications = create<NotificationState>((set, get) => ({
     }
 
     try {
-      // Try main API first, fallback to fallback API
+      // Try main API first, fallback to fallback API. Auth/tenant scoping is
+      // derived server-side from the session cookie, not from these params.
       let response;
       try {
-        response = await fetch(`/api/notifications/${id}?tenantId=${tenantId}`, {
+        response = await fetch(`/api/notifications/${id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ read: true }),
         });
       } catch (error) {
         console.log('Main API not available, using fallback');
-        response = await fetch(`/api/notifications/fallback?tenantId=${tenantId}`, {
+        response = await fetch(`/api/notifications/fallback`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ markAsRead: true, notificationIds: [id] }),
@@ -94,17 +95,18 @@ export const useNotifications = create<NotificationState>((set, get) => ({
     }
 
     try {
-      // Try main API first, fallback to fallback API
+      // Try main API first, fallback to fallback API. Auth/tenant scoping is
+      // derived server-side from the session cookie, not from these params.
       let response;
       try {
-        response = await fetch(`/api/notifications?tenantId=${tenantId}`, {
+        response = await fetch(`/api/notifications`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ markAsRead: true, role }),
         });
       } catch (error) {
         console.log('Main API not available, using fallback');
-        response = await fetch(`/api/notifications/fallback?tenantId=${tenantId}`, {
+        response = await fetch(`/api/notifications/fallback`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ markAsRead: true, role }),
@@ -138,15 +140,17 @@ export const useNotifications = create<NotificationState>((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       
-      // Try the main API first, fallback to the fallback API
+      // Try the main API first, fallback to the fallback API. Auth/tenant
+      // scoping is derived server-side from the session cookie; role/userId
+      // are passed only as content filters (admins may filter by them, the
+      // server forces non-admins back to their own values regardless).
       let response;
       try {
         const userIdParam = userId ? `&userId=${userId}` : '';
-        response = await fetch(`/api/notifications?tenantId=${tenantId}&role=${role}&limit=50${userIdParam}`);
+        response = await fetch(`/api/notifications?role=${role}&limit=50${userIdParam}`);
       } catch (error) {
         console.log('Main API not available, using fallback');
-        const userIdParam = userId ? `&userId=${userId}` : '';
-        response = await fetch(`/api/notifications/fallback?tenantId=${tenantId}&role=${role}&limit=50${userIdParam}`);
+        response = await fetch(`/api/notifications/fallback?role=${role}&limit=50`);
       }
       
       if (response.ok) {

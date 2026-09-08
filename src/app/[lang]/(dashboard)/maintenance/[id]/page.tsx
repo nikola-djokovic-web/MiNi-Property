@@ -34,6 +34,7 @@ import PageHeader from '@/components/page-header';
 import { useTranslation } from '@/hooks/use-translation';
 import { useToast } from '@/hooks/use-toast';
 import { useChatMessages } from '@/hooks/use-chat-messages';
+import { playMessageSentSound } from '@/lib/notification-sound';
 
 function getStatusClasses(status: string) {
   switch (status) {
@@ -78,9 +79,17 @@ export default function MaintenanceDetailPage() {
   const [error, setError] = useState<string | null>(null);
   
   const messages = useChatMessages((state) => state.messagesByRequestId[requestId] || []);
+  const typingUsers = useChatMessages((state) => {
+    const typing = state.typingByRequestId[requestId];
+    if (!typing) return [];
+    return Object.entries(typing)
+      .filter(([userId]) => userId !== user?.id)
+      .map(([, userName]) => userName);
+  });
   const [newMessage, setNewMessage] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
   const chatViewportRef = useRef<HTMLDivElement>(null);
+  const lastTypingSentAtRef = useRef(0);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editableIssue, setEditableIssue] = useState("");
@@ -582,6 +591,15 @@ export default function MaintenanceDetailPage() {
     }
   };
 
+  // Throttled "user is typing" ping - fires at most once every 2s while the
+  // tenant/worker/admin is actively typing in the chat box.
+  const handleTyping = () => {
+    const now = Date.now();
+    if (now - lastTypingSentAtRef.current < 2000) return;
+    lastTypingSentAtRef.current = now;
+    fetch(`/api/maintenance-requests/${requestId}/chat/typing`, { method: 'POST' }).catch(() => {});
+  };
+
   const handleSendMessage = async () => {
     const text = newMessage.trim();
     if (text === "" || !user || sendingMessage) return;
@@ -600,6 +618,7 @@ export default function MaintenanceDetailPage() {
       const result = await response.json();
       // The SSE broadcast also delivers this back to us; the store dedupes by id.
       useChatMessages.getState().appendMessage(result.data);
+      playMessageSentSound().catch(() => {});
     } catch (error) {
       console.error('Failed to send chat message:', error);
       toast({ title: dict?.maintenance?.chatSendFailed || 'Failed to send message', variant: 'destructive' });
@@ -1242,12 +1261,23 @@ export default function MaintenanceDetailPage() {
                     )}
                   </div>
                 </ScrollArea>
-              
+
+              {typingUsers.length > 0 && (
+                <p className="text-xs text-muted-foreground italic mb-2 px-1">
+                  {typingUsers.length === 1
+                    ? (dict?.maintenance?.isTyping || "{name} is typing...").replace("{name}", typingUsers[0])
+                    : (dict?.maintenance?.areTyping || "Several people are typing...")}
+                </p>
+              )}
+
               <div className="flex w-full items-center gap-2">
                 <Textarea
                   placeholder={dict?.maintenance?.typeMessagePlaceholder || "Type a message..."}
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
+                  onChange={(e) => {
+                    setNewMessage(e.target.value);
+                    handleTyping();
+                  }}
                   onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();

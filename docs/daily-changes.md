@@ -381,14 +381,38 @@ Potvrđeno uživo: dva odvojena browser taba (admin i stanar) preko headless Chr
 
 ---
 
+## 6. Zatvaranje bezbednosne rupe u notifikacijama i provera uloga
+
+Otkriven kritičan propust: ceo `/api/notifications/*` API (glavna ruta, `[id]`, `cleanup`, `fallback`, SSE `stream`) uopšte nije proveravao sesiju — `tenantId`/`userId`/`role` su se čitali direktno iz query stringa koji šalje klijent. Posledica: neautentikovan poziv sa pogođenim `tenantId`-om mogao je da čita, kreira, masovno označi kao pročitano i briše notifikacije bilo koje firme; SSE `stream` ruta je dodatno slala `Access-Control-Allow-Origin: '*'`, pa je i eksterni sajt mogao da se prijavi na tuđi live notification stream.
+
+- Sve rute prebačene na `getSessionUser()` (SSE ruta autentikuje preko sesijskog kolačića, koji `EventSource` šalje automatski na same-origin zahtevima); `tenantId` se sada isključivo uzima iz sesije, nikad iz zahteva. `[id]` ruta dobila proveru vlasništva — non-admin sme samo svoju notifikaciju ili notifikaciju za svoju ulogu.
+- `tenants/route.ts` i `properties/route.ts` su interno radili server-to-server `fetch()` ka sopstvenoj `/api/notifications/fallback` da bi upisali notifikaciju o novom stanaru/nekretnini — takav `fetch()` ne nosi sesijski kolačić, pa bi to tiho prestalo da radi čim se `fallback` ruta zaključa iza autentikacije. Rešeno izdvajanjem `createFallbackNotification()` (nov fajl `src/lib/notification-fallback-store.ts`) i direktnim in-process pozivom umesto self-fetch-a.
+- Dodat `requireRole()` helper u `src/lib/auth.ts` (mirroring postojeći `requireAdmin()` obrazac iz `admins/route.ts`/`webhooks/route.ts`, sad centralizovan).
+- `GET /api/tenants` i `GET /api/workers` sada zahtevaju admin/owner ulogu (ranije ih je mogao pozvati bilo koji ulogovan korisnik i izlistati sve stanare/radnike firme); `GET /api/properties` odbija `tenant` ulogu (nav.ts je već sakrivao taj link, ali sam API nije proveravao ulogu).
+- `GET /api/workers` je dodatno vraćao ceo `User` red uključujući `passwordHash` (nedostajao `select`); ispravljeno.
+- Klijentski hook-ovi (`use-notifications.ts`, `use-realtime-notifications.ts`) više ne šalju `tenantId`/`userId`/`role` kroz URL — server ih izvodi iz sesije.
+- Dodata 3 nova unit testa za `requireRole()` u `src/lib/auth.test.ts` (mock sesije/uloge).
+
+---
+
+## 7. Chat: zvuk pri slanju, indikator kucanja, poruke u zvonu notifikacija
+
+- **Zvuk pri slanju poruke** — nov zajednički Web Audio modul `src/lib/notification-sound.ts`; njime zamenjena dotad duplirana audio logika unutar `use-realtime-notifications.ts`, tako da i primljena notifikacija i sopstvena poslata chat poruka sada dele isti kod za zvuk.
+- **Indikator "X kuca..."** — klijent šalje throttled (najviše jednom na 2s) signal na novu rutu `POST /api/maintenance-requests/[id]/chat/typing` (ništa se ne čuva u bazi), koja preko postojeće SSE infrastrukture emituje nov `type: 'typing'` event svima u istoj firmi. Prikazuje se ispod chat prozora i automatski nestaje posle 4s neaktivnosti ili čim stigne stvarna poruka. Nov Zustand state (`typingByRequestId`) u `use-chat-messages.ts`; zajednička provera pristupa zahtevu (`loadRequestForChatUser`) izdvojena u nov fajl `src/server/maintenance-chat.ts` da je dele `chat/route.ts` i nova `chat/typing/route.ts`.
+- **Chat poruke u zvonu notifikacija** — nova poruka od drugog korisnika sad se, pored dodavanja u chat, prikazuje i kao notifikacija u zvonu (ikonica, zvuk, animacija zvona, link nazad na taj zahtev za održavanje) — ranije su chat poruke stizale samo preko SSE u chat store, bez ikakvog traga u notifikacijama.
+- Dodati i18n ključevi (`isTyping`, `areTyping`, `notifications.newChatMessageTitle`) u en i de rečnike.
+
+---
+
 ## Provera (sesija od 8. septembra)
 
-- `npx tsc --noEmit`, `npm run build`, `npx vitest run` (18/18) posle svake celine.
+- `npx tsc --noEmit`, `npm run build`, `npx vitest run` (18/18) posle svake celine za stavke 1-5.
 - Ručne Prisma migracije (`migration.sql` + `migrate deploy` + `generate`) za sve tri šematske izmene (Lease.residentUserId; MaintenanceRequest submittedByUserId/tenantConfirmed/rating/ratingComment; ChatMessage model).
 - curl testovi za autorizaciju svake nove/izmenjene rute (stanar/radnik/admin granice, uključujući 409 na duplu potvrdu i 404 na chat pristup bez prava).
 - Headless Chrome (CDP) za sve UI izmene, uključujući test sa dva istovremena browser taba za real-time chat.
+- Za stavke 6-7: `npx tsc --noEmit` i `npx vitest run` (21/21, uključujući nova 3 testa za `requireRole()`) prolaze bez novih grešaka. Live provera (dva taba, curl na notifications rute sa tuđim `tenantId`-om, SSE `stream` bez sesije) **nije rađena u ovoj sesiji** jer okruženje nije imalo pokrenut dev server/bazu — preporučeno da se odradi pre deploy-a.
 
-## 6. Primena Prisma migracija na produkcionu bazu
+## 8. Primena Prisma migracija na produkcionu bazu
 
 - Primenjene obe preostale migracije na PostgreSQL bazi preko `npm run db:migrate`: `20260908100000_add_lease_resident_user` i `20260908110000_add_maintenance_confirm_and_chat`.
 - `npx prisma migrate status` potvrđuje da je baza sada potpuno usklađena sa šemom (15/15 migracija primenjeno).

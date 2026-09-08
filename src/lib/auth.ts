@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import crypto from "node:crypto";
+import { NextResponse } from "next/server";
 import { prisma } from "@/server/db";
 
 export const SESSION_COOKIE = "mini_property_session";
@@ -59,6 +60,22 @@ export async function requireUser() {
     throw new Error("UNAUTHENTICATED");
   }
   return user;
+}
+
+/**
+ * Session + role gate for API routes: returns the session user when it
+ * exists and its role is in `roles`, otherwise a ready-to-return
+ * NextResponse (401 if unauthenticated, 403 if the role doesn't match).
+ */
+export async function requireRole(roles: string[]) {
+  const user = await getSessionUser();
+  if (!user) {
+    return { user: null, error: NextResponse.json({ error: "Authentication required" }, { status: 401 }) };
+  }
+  if (!roles.includes(user.role)) {
+    return { user: null, error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+  }
+  return { user, error: null };
 }
 
 export function publicUser(user: {

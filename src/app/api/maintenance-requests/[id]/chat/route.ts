@@ -3,20 +3,11 @@ import { z } from 'zod';
 import { prisma } from '@/server/db';
 import { getSessionUser } from '@/lib/auth';
 import { broadcastChatMessage } from '../../../notifications/stream/route';
+import { loadRequestForChatUser } from '@/server/maintenance-chat';
 
 const createChatMessageSchema = z.object({
   text: z.string().trim().min(1).max(4000),
 });
-
-async function loadRequestForChatUser(requestId: string, user: { tenantId: string; role: string; id: string }) {
-  const request = await prisma.maintenanceRequest.findFirst({
-    where: { id: requestId, tenantId: user.tenantId },
-  });
-  if (!request) return null;
-  if (user.role === 'worker' && request.assignedWorkerId !== user.id) return null;
-  if (user.role === 'tenant' && request.submittedByUserId !== user.id) return null;
-  return request;
-}
 
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {

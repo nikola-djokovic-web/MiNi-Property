@@ -332,9 +332,12 @@ const dictionary: typeof enDictionary = {
         priorityLabel: "Priorität",
         chat: "Chat",
         typeMessagePlaceholder: "Nachricht eingeben...",
+        isTyping: "{name} schreibt...",
+        areTyping: "Mehrere Personen schreiben...",
         notifications: {
             requestCompletedTitle: "Anfrage abgeschlossen",
             requestCompletedDescription: "Ihre Wartungsanfrage \"{issue}\" wurde abgeschlossen.",
+            newChatMessageTitle: "Neue Nachricht von {name}",
             requestAssignedTitle: "Anfrage zugewiesen",
             requestAssignedDescription: "Ihre Anfrage \"{issue}\" wurde einem Mitarbeiter zugewiesen.",
             requestUnassignedTitle: "Zuweisung aufgehoben",

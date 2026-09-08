@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/server/db';
+import { requireRole } from '@/lib/auth';
 
 // POST /api/notifications/cleanup - Clean up old notifications (older than 30 days)
 export async function POST(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId');
-
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
-    }
+    const { user, error } = await requireRole(['admin', 'owner']);
+    if (error) return error;
+    const tenantId = user.tenantId;
 
     // Delete notifications older than 30 days
     const thirtyDaysAgo = new Date();
@@ -40,12 +38,9 @@ export async function POST(request: NextRequest) {
 // GET /api/notifications/cleanup - Check how many notifications would be cleaned up
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId');
-
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
-    }
+    const { user, error } = await requireRole(['admin', 'owner']);
+    if (error) return error;
+    const tenantId = user.tenantId;
 
     // Count notifications older than 30 days
     const thirtyDaysAgo = new Date();

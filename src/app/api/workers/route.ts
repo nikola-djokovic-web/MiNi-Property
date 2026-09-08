@@ -15,10 +15,24 @@ export async function GET(req: NextRequest) {
   try {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    if (user.role !== "admin" && user.role !== "owner") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     const tenantId = user.tenantId;
     const workers = await prisma.user.findMany({
       where: { tenantId, role: "worker" },
       orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        tenantId: true,
+        role: true,
+        name: true,
+        email: true,
+        profileImage: true,
+        propertyId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
     return NextResponse.json({ data: workers });
   } catch (e: any) {

@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Search, Moon, Sun, Bell, Check, Languages, Wrench, AlertTriangle, Info, CheckCircle, User, Home, Settings } from 'lucide-react';
+import { Search, Moon, Sun, Bell, Check, Languages, Wrench, AlertTriangle, Info, CheckCircle, User, Home, Settings, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
 import SearchDialog from '../search-dialog';
@@ -40,6 +40,7 @@ const getIconComponent = (iconName: string) => {
     'Home': Home,
     'Settings': Settings,
     'Bell': Bell,
+    'MessageSquare': MessageSquare,
   };
   return iconMap[iconName] || Bell; // Default to Bell if icon not found
 };

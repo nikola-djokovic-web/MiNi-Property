@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma as db } from '@/server/db';
+import { getSessionUser } from '@/lib/auth';
 
 // Fixed: Handle both local notifications and database notifications properly
+
+function canAccess(user: { id: string; role: string }, notification: { userId: string | null; targetRole: string | null }) {
+  if (user.role === 'admin' || user.role === 'owner') return true;
+  return notification.userId === user.id || notification.targetRole === user.role;
+}
 
 // GET /api/notifications/[id] - Get specific notification
 export async function GET(
@@ -9,13 +15,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
-    const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId');
-
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
+    const tenantId = user.tenantId;
+    const { id } = await params;
 
     // Handle local notifications (they don't exist in the database)
     if (id.startsWith('local-')) {
@@ -34,7 +39,7 @@ export async function GET(
       },
     });
 
-    if (!notification) {
+    if (!notification || !canAccess(user, notification)) {
       return NextResponse.json({ error: 'Notification not found' }, { status: 404 });
     }
 
@@ -51,31 +56,33 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    const tenantId = user.tenantId;
     const { id } = await params;
     const body = await request.json();
-    const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId');
-
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
-    }
-
     const { read } = body;
 
     // Handle local notifications (they don't exist in the database)
     if (id.startsWith('local-')) {
       // Return success for local notifications - they're handled in the frontend store
-      return NextResponse.json({ 
+      return NextResponse.json({
         id,
         read: read === true,
         message: 'Local notification updated in frontend store only'
       });
     }
 
+    const existing = await db.notification.findFirst({ where: { id, tenantId } });
+    if (!existing || !canAccess(user, existing)) {
+      return NextResponse.json({ error: 'Notification not found' }, { status: 404 });
+    }
+
     const notification = await db.notification.update({
       where: {
         id,
-        tenantId,
       },
       data: {
         read: read === true,
@@ -101,27 +108,30 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
-    const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId');
-
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
+    const tenantId = user.tenantId;
+    const { id } = await params;
 
     // Handle local notifications (they don't exist in the database)
     if (id.startsWith('local-')) {
       // Return success for local notifications - they're handled in the frontend store
-      return NextResponse.json({ 
+      return NextResponse.json({
         success: true,
         message: 'Local notification removed from frontend store only'
       });
     }
 
+    const existing = await db.notification.findFirst({ where: { id, tenantId } });
+    if (!existing || !canAccess(user, existing)) {
+      return NextResponse.json({ error: 'Notification not found' }, { status: 404 });
+    }
+
     await db.notification.delete({
       where: {
         id,
-        tenantId,
       },
     });
 

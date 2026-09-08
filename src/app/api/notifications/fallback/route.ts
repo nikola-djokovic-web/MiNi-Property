@@ -1,21 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { broadcastNotification } from '../stream/route';
-
-// In-memory storage for notifications (fallback until database models are ready)
-const notificationStorage = new Map<string, any[]>();
+import { getSessionUser } from '@/lib/auth';
+import { notificationStorage, createFallbackNotification } from '@/lib/notification-fallback-store';
 
 // GET /api/notifications/fallback - Get notifications from memory
 export async function GET(request: NextRequest) {
   try {
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    const tenantId = user.tenantId;
+
     const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId') || 'default-tenant';
-    const role = searchParams.get('role');
+    const requestedRole = searchParams.get('role');
+    // Non-admins may only read notifications targeted at their own role.
+    const role = user.role === 'admin' || user.role === 'owner' ? requestedRole : user.role;
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
 
     const key = `${tenantId}-${role}`;
     const allNotifications = notificationStorage.get(key) || [];
-    
+
     const notifications = allNotifications
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(offset, offset + limit);
@@ -38,26 +43,17 @@ export async function GET(request: NextRequest) {
 // POST /api/notifications/fallback - Create notification in memory
 export async function POST(request: NextRequest) {
   try {
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    if (user.role !== 'admin' && user.role !== 'owner') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    const tenantId = user.tenantId;
+
     const body = await request.json();
-    const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId') || 'default-tenant';
-
-    const notification = {
-      ...body,
-      id: `fallback-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      tenantId,
-      read: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    const key = `${tenantId}-${notification.targetRole}`;
-    const existing = notificationStorage.get(key) || [];
-    existing.unshift(notification);
-    notificationStorage.set(key, existing);
-
-    // Broadcast to real-time connections
-    broadcastNotification(tenantId, notification, notification.userId, notification.targetRole);
+    const notification = createFallbackNotification(tenantId, body);
 
     return NextResponse.json(notification, { status: 201 });
   } catch (error) {
@@ -69,16 +65,21 @@ export async function POST(request: NextRequest) {
 // PATCH /api/notifications/fallback - Mark notifications as read
 export async function PATCH(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId') || 'default-tenant';
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    const tenantId = user.tenantId;
 
-    const { notificationIds, markAsRead, role } = body;
+    const body = await request.json();
+    const { notificationIds, markAsRead, role: requestedRole } = body;
+    // Non-admins may only mark their own role's notifications as read.
+    const role = user.role === 'admin' || user.role === 'owner' ? requestedRole : user.role;
 
     if (markAsRead === true) {
       const key = `${tenantId}-${role}`;
       const notifications = notificationStorage.get(key) || [];
-      
+
       let updatedCount = 0;
       const updated = notifications.map(n => {
         if (notificationIds && Array.isArray(notificationIds)) {

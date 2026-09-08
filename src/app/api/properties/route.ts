@@ -4,6 +4,7 @@ import { prisma } from "@/server/db";
 import { getSessionUser } from "@/lib/auth";
 import { listPropertiesForUser } from "@/server/queries";
 import { broadcastNotification } from "../notifications/stream/route";
+import { createFallbackNotification } from "@/lib/notification-fallback-store";
 
 const createPropertySchema = z.object({
   title: z.string().trim().max(200).optional(),
@@ -22,6 +23,9 @@ export async function GET(req: NextRequest) {
   try {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    if (user.role === "tenant") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const data = await listPropertiesForUser(user);
 
@@ -94,24 +98,20 @@ export async function POST(req: NextRequest) {
       // Broadcast to real-time connections
       broadcastNotification(tenantId, notification, undefined, 'admin');
 
-      // Also try to create database notification
+      // Also persist to the fallback notification store
       try {
-        await fetch(`${req.nextUrl.origin}/api/notifications/fallback?tenantId=${tenantId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: notification.title,
-            description: notification.description,
-            icon: notification.icon,
-            type: notification.type,
-            priority: notification.priority,
-            targetRole: notification.targetRole,
-            navigationUrl: notification.navigationUrl,
-            actionLabel: notification.actionLabel,
-            actionUrl: notification.actionUrl,
-            relatedType: notification.relatedType,
-            relatedId: notification.relatedId,
-          }),
+        createFallbackNotification(tenantId, {
+          title: notification.title,
+          description: notification.description,
+          icon: notification.icon,
+          type: notification.type,
+          priority: notification.priority,
+          targetRole: notification.targetRole,
+          navigationUrl: notification.navigationUrl,
+          actionLabel: notification.actionLabel,
+          actionUrl: notification.actionUrl,
+          relatedType: notification.relatedType,
+          relatedId: notification.relatedId,
         });
       } catch (notifError) {
         console.log('Fallback notification creation failed:', notifError);

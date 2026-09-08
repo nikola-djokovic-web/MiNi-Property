@@ -1,18 +1,22 @@
 import { NextRequest } from 'next/server';
+import { getSessionUser } from '@/lib/auth';
 
 // Keep track of active connections
 const connections = new Map<string, ReadableStreamDefaultController<Uint8Array>>();
 
 // GET /api/notifications/stream - Server-Sent Events for real-time notifications
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const userId = searchParams.get('userId');
-  const tenantId = searchParams.get('tenantId');
-  const role = searchParams.get('role');
-
-  if (!tenantId) {
-    return new Response('Tenant ID is required', { status: 400 });
+  // EventSource sends the session cookie automatically on same-origin
+  // requests, so auth/tenant/role are derived from the session only -
+  // never trusted from the query string.
+  const user = await getSessionUser();
+  if (!user) {
+    return new Response('Authentication required', { status: 401 });
   }
+
+  const userId = user.id;
+  const tenantId = user.tenantId;
+  const role = user.role;
 
   const connectionId = `${tenantId}-${userId || role || 'anonymous'}-${role}`;
 
@@ -100,9 +104,6 @@ export async function GET(request: NextRequest) {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET',
-      'Access-Control-Allow-Headers': 'Cache-Control',
     },
   });
 }
@@ -198,6 +199,31 @@ export function broadcastChatMessage(tenantId: string, chatMessage: any) {
       controller.enqueue(encodedMessage);
     } catch (error) {
       console.log('Error broadcasting chat message to connection:', connectionId, error instanceof Error ? error.message : String(error));
+      connections.delete(connectionId);
+    }
+  }
+}
+
+// Function to broadcast a "user is typing" indicator for a maintenance
+// request chat to everyone else connected in the same org.
+export function broadcastTyping(tenantId: string, data: { requestId: string; userId: string; userName: string }) {
+  if (connections.size === 0) return;
+
+  const message = `data: ${JSON.stringify({
+    type: 'typing',
+    data,
+    timestamp: new Date().toISOString(),
+  })}\n\n`;
+
+  const encodedMessage = new TextEncoder().encode(message);
+
+  for (const [connectionId, controller] of connections.entries()) {
+    const [connTenantId] = connectionId.split('-');
+    if (connTenantId !== tenantId) continue;
+    try {
+      controller.enqueue(encodedMessage);
+    } catch (error) {
+      console.log('Error broadcasting typing indicator to connection:', connectionId, error instanceof Error ? error.message : String(error));
       connections.delete(connectionId);
     }
   }

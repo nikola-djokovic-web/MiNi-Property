@@ -331,9 +331,12 @@ const dictionary = {
         priorityLabel: "Priority",
         chat: "Chat",
         typeMessagePlaceholder: "Type a message...",
+        isTyping: "{name} is typing...",
+        areTyping: "Several people are typing...",
         notifications: {
             requestCompletedTitle: "Request Completed",
             requestCompletedDescription: "Your maintenance request \"{issue}\" has been completed.",
+            newChatMessageTitle: "New message from {name}",
             requestAssignedTitle: "Request Assigned",
             requestAssignedDescription: "Your request \"{issue}\" has been assigned to a worker.",
             requestUnassignedTitle: "Request Unassigned",
