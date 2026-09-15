@@ -5,7 +5,7 @@ export async function loadRequestForUser(
   user: { tenantId: string; role: string; id: string }
 ) {
   const maintenanceRequest = await prisma.maintenanceRequest.findFirst({
-    where: { id: requestId, tenantId: user.tenantId },
+    where: { id: requestId, tenantId: user.tenantId, deletedAt: null },
   });
   if (!maintenanceRequest) return null;
   if (user.role === 'worker' && maintenanceRequest.assignedWorkerId !== user.id) {

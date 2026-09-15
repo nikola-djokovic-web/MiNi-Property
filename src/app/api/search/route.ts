@@ -94,6 +94,7 @@ export async function GET(req: NextRequest) {
       prisma.maintenanceRequest.findMany({
         where: {
           tenantId,
+          deletedAt: null,
           OR: [
             { issue: { contains: query, mode: 'insensitive' } },
             { details: { contains: query, mode: 'insensitive' } },

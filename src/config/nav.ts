@@ -9,6 +9,7 @@ import {
   UserCog,
   List,
   Bot,
+  BarChart3,
   type LucideIcon,
 } from "lucide-react";
 
@@ -44,6 +45,13 @@ export const navItems: NavItem[] = [
   },
   { href: "/tenants", labelKey: "tenants", label: "Tenants", icon: Users, roles: ["admin"] },
   { href: "/workers", labelKey: "workers", label: "Workers", icon: UserCog, roles: ["admin"] },
+  {
+    href: "/workers/statistics",
+    labelKey: "workerStatistics",
+    label: "Worker Statistics",
+    icon: BarChart3,
+    roles: ["admin", "owner", "worker"],
+  },
   {
     href: "/maintenance",
     labelKey: "maintenance",

@@ -704,12 +704,15 @@ export default function MaintenanceDetailPage() {
     notFound();
   }
 
-  const isAdmin = user?.role === 'admin';
+  // Admin and owner share the same ticket-management permissions throughout this page.
+  const isAdmin = user?.role === 'admin' || user?.role === 'owner';
   const isWorker = user?.role === 'worker';
   const isTenant = user?.role === 'tenant';
   const isAssignedToMe = request.assignedWorkerId === user?.id;
+  // Locked once the tenant has confirmed the work - only admin/owner can still act on it.
+  const isLocked = request.status === 'Completed' && request.tenantConfirmed === true;
 
-  const canTakeAction = isAssignedToMe || (isAdmin && !request.assignedWorkerId) || (isAdmin && isAssignedToMe);
+  const canTakeAction = !isLocked && (isAssignedToMe || (isAdmin && !request.assignedWorkerId) || (isAdmin && isAssignedToMe));
   const canClaimRequest = !request.assignedWorkerId && (isAdmin || isWorker);
   const canManageUnassigned = !request.assignedWorkerId && isAdmin;
   const canChangeAssignment = isAdmin; // Only admins can reassign requests
@@ -847,6 +850,12 @@ export default function MaintenanceDetailPage() {
                       )}
                     </>
                   )}
+                  {/* Admin/owner override: manually reopen a ticket the tenant already closed. */}
+                  {isAdmin && isLocked && (
+                    <Button variant="outline" onClick={() => handleStatusChange('In Progress')}>
+                      {dict?.maintenance?.reopenTicket || "Reopen Ticket"}
+                    </Button>
+                  )}
                 </>
               )}
             </div>
@@ -926,7 +935,7 @@ export default function MaintenanceDetailPage() {
           )}
 
           {/* Work Logs Section */}
-          {(showTimerAndStatus || isAdmin) && (
+          {(showTimerAndStatus || isAdmin || isAssignedToMe) && (
             <Card>
               <CardContent className="p-6">
                 <h2 className="text-xl font-bold mb-2">{dict?.maintenance?.workLogs || "Work Logs"}</h2>
@@ -1007,8 +1016,8 @@ export default function MaintenanceDetailPage() {
                   </div>
                 )}
 
-                {/* Notes Input - Only for assigned worker or admin */}
-                {(isAssignedToMe || (isAdmin && request.assignedWorkerId === user?.id)) && (
+                {/* Notes Input - Only for assigned worker or admin, and only while the ticket isn't locked */}
+                {!isLocked && (isAssignedToMe || (isAdmin && request.assignedWorkerId === user?.id)) && (
                   <div className="space-y-4">
                     <Label>{dict?.maintenance?.notes || "Notes"}</Label>
                     <Textarea
@@ -1212,6 +1221,11 @@ export default function MaintenanceDetailPage() {
               {(isAdmin || isWorker) && request.status === 'Completed' && !request.tenantConfirmed && request.submittedByUserId && (
                 <Badge variant="outline" className="border-amber-500 text-amber-600">
                   {dict?.maintenance?.awaitingConfirmation || "Awaiting tenant confirmation"}
+                </Badge>
+              )}
+              {isLocked && (
+                <Badge variant="outline" className="border-green-600 text-green-700">
+                  {dict?.maintenance?.ticketClosed || "Closed"}
                 </Badge>
               )}
             </div>

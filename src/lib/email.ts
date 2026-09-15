@@ -257,3 +257,50 @@ export async function sendWorkCompletedEmail({
   if (transporter) return sendEmail(to, subject, html);
   throw new Error("No email service configured");
 }
+
+export async function sendTicketConfirmedEmail({
+  to,
+  workerName,
+  issue,
+  requestId,
+  rating,
+  ratingComment,
+}: {
+  to: string;
+  workerName: string;
+  issue: string;
+  requestId: string;
+  rating?: number | null;
+  ratingComment?: string | null;
+}) {
+  const link = `${APP_URL}/en/maintenance/${requestId}`;
+  const subject = `Your work on "${issue}" was confirmed`;
+  const ratingHtml = rating
+    ? `<p>The tenant rated your work <strong>${rating}/5</strong>.</p>`
+    : "";
+  const commentHtml = ratingComment
+    ? `<p style="color: #666;">"${ratingComment}"</p>`
+    : "";
+  const html = `
+    <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+      <p>Hi ${workerName},</p>
+      <p>The tenant confirmed that the maintenance request "<strong>${issue}</strong>" was completed. This ticket is now closed.</p>
+      ${ratingHtml}
+      ${commentHtml}
+      <p style="margin: 24px 0;">
+        <a href="${link}" style="background: #328378; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none;">View request</a>
+      </p>
+      <p style="color: #666; font-size: 13px;">MiNi Property</p>
+    </div>
+  `;
+
+  if (resend) {
+    try {
+      return await resend.emails.send({ from: EMAIL_FROM, to, subject, html });
+    } catch (error) {
+      console.error("Resend ticket-confirmed email failed:", error);
+    }
+  }
+  if (transporter) return sendEmail(to, subject, html);
+  throw new Error("No email service configured");
+}

@@ -17,6 +17,14 @@ export async function GET(req: NextRequest, { params }: Params) {
     const { id } = await params;
     const tenantId = user.tenantId;
 
+    // A worker may only view their own stats; everyone else needs admin/owner.
+    if (user.role === "worker" && user.id !== id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    if (user.role !== "worker" && user.role !== "admin" && user.role !== "owner") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const worker = await prisma.user.findFirst({
       where: { id, tenantId, role: "worker" },
       select: {
@@ -39,7 +47,7 @@ export async function GET(req: NextRequest, { params }: Params) {
         orderBy: { createdAt: "desc" },
       }),
       prisma.maintenanceRequest.findMany({
-        where: { tenantId, assignedWorkerId: id },
+        where: { tenantId, assignedWorkerId: id, deletedAt: null },
         select: {
           id: true,
           issue: true,

@@ -13,7 +13,7 @@ export async function listPropertiesForUser(user: Pick<User, "tenantId" | "role"
 }
 
 export async function listMaintenanceRequestsForUser(user: Pick<User, "tenantId" | "role" | "id">) {
-  const whereClause: any = { tenantId: user.tenantId };
+  const whereClause: any = { tenantId: user.tenantId, deletedAt: null };
   if (user.role === "worker") {
     whereClause.assignedWorkerId = user.id;
   }

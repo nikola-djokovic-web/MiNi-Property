@@ -5,7 +5,7 @@ export async function loadRequestForChatUser(
   user: { tenantId: string; role: string; id: string }
 ) {
   const request = await prisma.maintenanceRequest.findFirst({
-    where: { id: requestId, tenantId: user.tenantId },
+    where: { id: requestId, tenantId: user.tenantId, deletedAt: null },
   });
   if (!request) return null;
   if (user.role === "worker" && request.assignedWorkerId !== user.id) return null;

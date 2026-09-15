@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@/server/db';
 import { getSessionUser } from '@/lib/auth';
 import { broadcastNotification } from '../../notifications/stream/route';
-import { sendWorkCompletedEmail } from '@/lib/email';
+import { sendWorkCompletedEmail, sendTicketConfirmedEmail } from '@/lib/email';
 
 const updateMaintenanceRequestSchema = z.object({
   issue: z.string().min(1).max(500).optional(),
@@ -32,6 +32,7 @@ export async function GET(
       where: {
         id: requestId,
         tenantId: tenantId,
+        deletedAt: null,
       },
       include: {
         property: {
@@ -121,6 +122,7 @@ export async function PATCH(
       where: {
         id: requestId,
         tenantId: tenantId,
+        deletedAt: null,
       },
     });
 
@@ -129,6 +131,13 @@ export async function PATCH(
         { error: 'Maintenance request not found' },
         { status: 404 }
       );
+    }
+
+    // Once the tenant has confirmed the work, the ticket is closed for the
+    // worker and the tenant - only admin/owner can still touch it (to
+    // manually reopen for an exception).
+    if (existingRequest.tenantConfirmed && (user.role === 'worker' || user.role === 'tenant')) {
+      return NextResponse.json({ error: 'This ticket is closed.' }, { status: 409 });
     }
 
     if (user.role === 'worker') {
@@ -175,7 +184,7 @@ export async function PATCH(
 
     if (assignedWorkerId) {
       const worker = await prisma.user.findFirst({
-        where: { id: assignedWorkerId, tenantId, role: 'worker' },
+        where: { id: assignedWorkerId, tenantId, role: { in: ['worker', 'admin', 'owner'] } },
         select: { id: true },
       });
       if (!worker) {
@@ -185,9 +194,14 @@ export async function PATCH(
 
     // Check if worker is being assigned for notifications
     const workerBeingAssigned = assignedWorkerId && assignedWorkerId !== existingRequest.assignedWorkerId;
-    // A tenant reopening a request they rejected as "not actually done".
-    const isReopening = user.role === 'tenant' && status === 'In Progress' && existingRequest.status === 'Completed';
+    // A tenant rejecting the work as "not actually done", or an admin/owner
+    // manually reopening a ticket that's already locked (post-confirmation).
+    const isReopening =
+      (user.role === 'tenant' || user.role === 'admin' || user.role === 'owner') &&
+      status === 'In Progress' &&
+      existingRequest.status === 'Completed';
     const isBeingMarkedCompleted = status === 'Completed' && existingRequest.status !== 'Completed';
+    const isBeingConfirmed = tenantConfirmed === true && !existingRequest.tenantConfirmed;
 
     // Update the maintenance request
     const updatedRequest = await prisma.maintenanceRequest.update({
@@ -203,8 +217,9 @@ export async function PATCH(
         ...(tenantConfirmed !== undefined && { tenantConfirmed }),
         ...(rating !== undefined && { rating }),
         ...(ratingComment !== undefined && { ratingComment }),
+        ...(isBeingConfirmed && { closedAt: new Date() }),
         // Reopening clears any stale confirmation state from a prior completion.
-        ...(isReopening && { tenantConfirmed: false, rating: null, ratingComment: null }),
+        ...(isReopening && { tenantConfirmed: false, rating: null, ratingComment: null, closedAt: null }),
         updatedAt: new Date(),
       },
       include: {
@@ -362,6 +377,68 @@ export async function PATCH(
       }
     }
 
+    // Notify the assigned worker that the tenant confirmed (and possibly rated) their work.
+    if (isBeingConfirmed && assignedWorker) {
+      try {
+        const notification = {
+          id: `maintenance-confirmed-${Date.now()}`,
+          title: 'Your work was confirmed',
+          description: `"${updatedRequest.issue}" was confirmed by the tenant${
+            updatedRequest.rating ? ` with a rating of ${updatedRequest.rating}/5` : ''
+          }.`,
+          icon: 'CheckCircle',
+          type: 'success',
+          priority: 'normal',
+          targetRole: 'worker',
+          targetUserId: assignedWorker.id,
+          navigationUrl: `/maintenance/${updatedRequest.id}`,
+          actionLabel: 'View Request',
+          actionUrl: `/maintenance/${updatedRequest.id}`,
+          relatedType: 'maintenance_request',
+          relatedId: updatedRequest.id,
+        };
+
+        try {
+          await prisma.notification.create({
+            data: {
+              title: notification.title,
+              description: notification.description,
+              icon: notification.icon,
+              type: notification.type,
+              priority: notification.priority,
+              navigationUrl: notification.navigationUrl,
+              actionLabel: notification.actionLabel,
+              actionUrl: notification.actionUrl,
+              userId: assignedWorker.id,
+              targetRole: notification.targetRole,
+              relatedType: notification.relatedType,
+              relatedId: notification.relatedId,
+              tenantId: tenantId,
+            },
+          });
+        } catch (dbError) {
+          console.error('Failed to save work-confirmed notification:', dbError);
+        }
+
+        broadcastNotification(tenantId, notification, assignedWorker.id, 'worker');
+
+        if (assignedWorker.email) {
+          await sendTicketConfirmedEmail({
+            to: assignedWorker.email,
+            workerName: assignedWorker.name || assignedWorker.email,
+            issue: updatedRequest.issue,
+            requestId: updatedRequest.id,
+            rating: updatedRequest.rating,
+            ratingComment: updatedRequest.ratingComment,
+          }).catch((emailError) => {
+            console.error('Failed to send ticket-confirmed email:', emailError);
+          });
+        }
+      } catch (notifyError) {
+        console.error('Error notifying worker of confirmed work:', notifyError);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -393,11 +470,12 @@ export async function DELETE(
     const { id: requestId } = await params;
     const tenantId = user.tenantId;
 
-    // Verify the request exists and belongs to the tenant
+    // Verify the request exists, belongs to the tenant, and isn't already deleted
     const existingRequest = await prisma.maintenanceRequest.findFirst({
       where: {
         id: requestId,
         tenantId: tenantId,
+        deletedAt: null,
       },
     });
 
@@ -408,10 +486,15 @@ export async function DELETE(
       );
     }
 
-    // Delete the maintenance request
-    await prisma.maintenanceRequest.delete({
+    // Soft delete: preserves history (work logs, chat, ratings) for stats/audit
+    // and keeps deletion reversible.
+    await prisma.maintenanceRequest.update({
       where: {
         id: requestId,
+      },
+      data: {
+        deletedAt: new Date(),
+        deletedByUserId: user.id,
       },
     });
 
