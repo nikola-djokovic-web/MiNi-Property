@@ -54,6 +54,8 @@ export default function DashboardPageContent({
   const [tenants, setTenants] = useState(tenantsInit);
   const [isLoading, setIsLoading] = useState(false);
   const [news, setNews] = useState(newsInit);
+  const [newsCarouselApi, setNewsCarouselApi] = useState<any>(null);
+  const [currentNewsIndex, setCurrentNewsIndex] = useState(1);
   const [editingNewsId, setEditingNewsId] = useState<string | null>(null);
   const [newsTitle, setNewsTitle] = useState("");
   const [newsContent, setNewsContent] = useState("");
@@ -202,6 +204,26 @@ export default function DashboardPageContent({
       });
     }
   };
+
+  useEffect(() => {
+    if (!newsCarouselApi || news.length === 0) {
+      setCurrentNewsIndex(1);
+      return;
+    }
+
+    const updateNewsIndex = () => {
+      setCurrentNewsIndex(newsCarouselApi.selectedScrollSnap() + 1);
+    };
+
+    updateNewsIndex();
+    newsCarouselApi.on("select", updateNewsIndex);
+    newsCarouselApi.on("reInit", updateNewsIndex);
+
+    return () => {
+      newsCarouselApi.off("select", updateNewsIndex);
+      newsCarouselApi.off("reInit", updateNewsIndex);
+    };
+  }, [newsCarouselApi, news.length]);
 
   const newsPageCount = Math.ceil(news.length / newsPageSize);
 
@@ -370,7 +392,7 @@ export default function DashboardPageContent({
           {news.length === 0 ? (
             <p className="py-8 text-center text-sm text-primary-foreground/75">{dict?.dashboard?.news?.noNewsYet || "No news updates yet."}</p>
           ) : (
-            <Carousel opts={{ loop: news.length > 1 }} className="group">
+            <Carousel setApi={setNewsCarouselApi} opts={{ loop: news.length > 1 }} className="group">
               <CarouselContent>
                 {news.map((post, index) => (
                   <CarouselItem key={post.id}>
@@ -400,7 +422,10 @@ export default function DashboardPageContent({
                 ))}
               </CarouselContent>
               {news.length > 1 && <>
-                <CarouselPrevious className="left-auto right-12 top-4 translate-y-0 border-primary-foreground/30 bg-transparent text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground sm:right-14" aria-label={dict?.dashboard?.news?.previousAriaLabel || "Previous news"} />
+                <CarouselPrevious className="left-auto right-28 top-4 translate-y-0 border-primary-foreground/30 bg-transparent text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" aria-label={dict?.dashboard?.news?.previousAriaLabel || "Previous news"} />
+                <div className="absolute right-14 top-4 flex h-8 items-center justify-center rounded-full border border-primary-foreground/30 bg-primary-foreground/5 px-2 text-[11px] font-medium text-primary-foreground/90" aria-live="polite">
+                  {currentNewsIndex}/{news.length}
+                </div>
                 <CarouselNext className="right-0 top-4 translate-y-0 border-primary-foreground/30 bg-transparent text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" aria-label={dict?.dashboard?.news?.nextAriaLabel || "Next news"} />
               </>}
             </Carousel>
