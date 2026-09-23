@@ -96,9 +96,9 @@ export default function AppSidebar() {
                 <Link
                   href={`/${lang}${item.href}`}
                   className={cn(
-                    "flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-10 md:w-10",
+                    "flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground md:h-10 md:w-10",
                     isActive(pathname, item.href) &&
-                      "bg-accent text-accent-foreground"
+                      "bg-primary text-primary-foreground"
                   )}
                 >
                   <item.icon className="h-5 w-5" />
@@ -127,8 +127,8 @@ export default function AppSidebar() {
               <Link
                 href={`/${lang}/settings/roles`}
                 className={cn(
-                  "flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-10 md:w-10",
-                  settingsActive && "bg-accent text-accent-foreground"
+                  "flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground md:h-10 md:w-10",
+                  settingsActive && "bg-primary text-primary-foreground"
                 )}
               >
                 <Settings className="h-5 w-5" />

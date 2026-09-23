@@ -61,8 +61,8 @@ export default function MobileSidebar() {
               key={item.href}
               href={`/${lang}${item.href}`}
               className={cn(
-                "flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground",
-                isActive(pathname, item.href) && "text-foreground"
+                "flex items-center gap-4 rounded-lg px-2.5 py-2 text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground",
+                isActive(pathname, item.href) && "bg-primary text-primary-foreground"
               )}
             >
               <item.icon className="h-5 w-5" />
@@ -72,8 +72,8 @@ export default function MobileSidebar() {
           <Link
             href={`/${lang}/settings/roles`}
             className={cn(
-              "flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground",
-              settingsActive && "text-foreground"
+              "flex items-center gap-4 rounded-lg px-2.5 py-2 text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground",
+              settingsActive && "bg-primary text-primary-foreground"
             )}
           >
             <Settings className="h-5 w-5" />
